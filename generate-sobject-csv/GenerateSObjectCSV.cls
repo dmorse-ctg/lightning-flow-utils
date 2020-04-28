@@ -106,35 +106,48 @@ global without sharing class GenerateSObjectCSV {
         Set<String> columnHeaders = new Set<String>{};
         List<String> columnRows = new List<String>{};
 
-        List<Map<String, Object>> fieldList = new List<Map<String, Object>>{};
-        for (AggregateResult result: (List<AggregateResult>)objectList) {
-            fieldList.add((Map<String, Object>)JSON.deserializeUntyped(JSON.serialize(result)));
-        }
-
         // If primary fields were provided, set them to the column values
         if (primaryFields != null) {
             columnHeaders = new Set<String>(primaryFields);
+            String columnRow = '';
+            for (AggregateResult result: (List<AggregateResult>)objectList) {
+                for (String header: columnHeaders) {
+                    Object fieldValue = result.get(header);
+                    if (fieldValue != null) {
+                        columnRow += String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').replace(',', '');
+                    } else {
+                        columnRow += 'null';
+                    }
+                    columnRow += ',';
+                }
+            }
         } else {
             // Else, get union of all populated field names
+            List<Map<String, Object>> fieldList = new List<Map<String, Object>>{};
+            for (AggregateResult result: (List<AggregateResult>)objectList) {
+                fieldList.add((Map<String, Object>)JSON.deserializeUntyped(JSON.serialize(result)));
+            }
+
             for (Map<String, Object> data: fieldList) {
                 columnHeaders.addAll(data.keySet());
             }
+
+            // 2. Set values in rows
+            for (Map<String, Object> data: fieldList) {
+                String columnRow = '';
+                for (String header: columnHeaders) {
+                    if (data.get(header) != null) {
+                        columnRow += String.valueOf(data.get(header)).replaceAll('\r\n|\n|\r',' ').replace(',', '');
+                        // columnRow += getDisplayTextForFieldType(fieldValue, fieldType);
+                    } else {
+                        columnRow += 'null';
+                    }
+                    columnRow += ',';
+                }
+                columnRows.add(columnRow);
+            }
         }
 
-        // 2. Set values in rows
-        for (Map<String, Object> data: fieldList) {
-            String columnRow = '';
-            for (String header: columnHeaders) {
-                if (data.get(header) != null) {
-                    columnRow += String.valueOf(data.get(header)).replaceAll('\r\n|\n|\r',' ').replace(',', '');
-                    // columnRow += getDisplayTextForFieldType(fieldValue, fieldType);
-                } else {
-                    columnRow += 'null';
-                }
-                columnRow += ',';
-            }
-            columnRows.add(columnRow);
-        }
         String columnHeadersCSV = String.join(new List<String>(columnHeaders), ',') + '\n';
         return columnHeadersCSV + String.join(columnRows, '\n');
     }
