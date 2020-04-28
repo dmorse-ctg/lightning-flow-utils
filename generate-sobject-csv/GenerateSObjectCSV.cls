@@ -9,10 +9,10 @@ global without sharing class GenerateSObjectCSV {
         @InvocableVariable(description='Title of the report' required=true)
         global String documentTitle;
 
-        @InvocableVariable(description='Sharing permissions for the file. Available values: "V" (viewer), "C" (collaborator), "I" (inferred)' required=true)
+        @InvocableVariable(description='Sharing permissions for the file. Available values: "V" (viewer), "C" (collaborator), "I" (inferred); Default value: "V"')
         global String documentShareType;
 
-        @InvocableVariable(description='Specifies whether the document is available to all users, internal users, or shared users. Available values: "AllUsers", "InternalUsers", "SharedUsers"' required=true)
+        @InvocableVariable(description='Specifies whether the document is available to all users, internal users, or shared users. Available values: "AllUsers", "InternalUsers", "SharedUsers"; Default value: "AllUsers"')
         global String documentVisibility;
     
         @InvocableVariable(description='Optional list of recordIds to link generated document to')
@@ -242,8 +242,16 @@ global without sharing class GenerateSObjectCSV {
                 ContentDocumentLink cdl = new ContentDocumentLink();
                 cdl.ContentDocumentId = doc[0].Id;
                 cdl.LinkedEntityId = recordId;
-                cdl.ShareType = documentShareType;
-                cdl.Visibility = documentVisibility;
+                if (documentShareType != null) {
+                    cdl.ShareType = documentShareType;
+                } else {
+                    cdl.ShareType = 'AllUsers';
+                }
+                if (documentVisibility != null) {
+                    cdl.Visibility = documentVisibility;
+                } else {
+                    cdl.Visibility = 'V';
+                }
                 links.add(cdl);
             }
             insert links;
