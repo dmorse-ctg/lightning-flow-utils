@@ -86,7 +86,7 @@ global without sharing class GenerateSObjectCSV {
             GenerateSObjectCSV.Outputs returnVal = generateDocument(inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility, fullCSV);
             return new List<GenerateSObjectCSV.Outputs>{returnVal};
         }
-        ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(inputVariables[0].inputCollection, primaryFields, relatedFields, inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility));
+        ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(inputVariables[0].inputCollection, primaryFields, relatedFields, linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility));
         Outputs returnVal = new Outputs();
         returnVal.asyncJobId = jobId;
         return new List<GenerateSObjectCSV.Outputs>{returnVal};
