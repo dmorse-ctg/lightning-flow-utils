@@ -179,7 +179,7 @@ global without sharing class GenerateSObjectCSV {
                     } else {
                         columnRow += String.valueOf(populatedFields.get(header)).replaceAll('\r\n|\n|\r',' ').escapeCsv();
                     }
-                } else if (relatedFields.contains(header)) { // 3. Handle Related Fields
+                } else if (relatedFields != null && relatedFields.contains(header)) { // 3. Handle Related Fields
                     // pull related fields and add data
                     List<String> fieldComponents = header.split('\\.');
                     SObject traverse = so;
