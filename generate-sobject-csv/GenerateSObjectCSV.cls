@@ -127,7 +127,7 @@ global without sharing class GenerateSObjectCSV {
             for (String header: columnHeaders) {
                 if (data.get(header) != null) {
                     columnRow += String.valueOf(data.get(header)).replaceAll('\r\n|\n|\r',' ').replace(',', '');
-                    // columnRow += JSON.serialize(populatedFields.get(header));
+                    // columnRow += getDisplayTextForFieldType(fieldValue, fieldType);
                 } else {
                     columnRow += 'null';
                 }
@@ -198,14 +198,7 @@ global without sharing class GenerateSObjectCSV {
                                 throw new GenerateCSVException('Invalid related list provided. Could not find field ' + comp + ' on ' + traverse);
                             }
                             Schema.DisplayType fieldType = traverse.getSObjectType().getDescribe().fields.getMap().get(comp).getDescribe().getType();
-                            if (fieldType == Schema.DisplayType.ADDRESS || fieldType == Schema.DisplayType.LOCATION) {
-                                // handle compound fields
-                                columnRow += JSON.serialize(fieldValue).escapeCsv();
-                            } else if (fieldType == Schema.DisplayType.DATE || fieldType == Schema.DisplayType.DATETIME) {
-                                columnRow += formatDateTime((String)fieldValue);
-                            } else {
-                                columnRow += String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').escapeCsv();
-                            }
+                            columnRow += getDisplayTextForFieldType(fieldValue, fieldType);
                         } else {
                             columnRow += 'null';
                         }
@@ -262,6 +255,17 @@ global without sharing class GenerateSObjectCSV {
         returnVal.contentVersionId=cv.Id;
         returnVal.contentDocumentLinks=links;
         return returnVal;
+    }
+
+    private static String getDisplayTextForFieldType(Object fieldValue, Schema.DisplayType fieldType) {
+        if (fieldType == Schema.DisplayType.ADDRESS || fieldType == Schema.DisplayType.LOCATION) {
+            // handle compound fields
+            return JSON.serialize(fieldValue).escapeCsv();
+        } else if (fieldType == Schema.DisplayType.DATE || fieldType == Schema.DisplayType.DATETIME) {
+            return formatDateTime((String)fieldValue);
+        } else {
+            return String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').escapeCsv();
+        }
     }
 
     private static String formatDateTime(String fieldValue) {
