@@ -4,7 +4,7 @@ private class GenerateSObjectCSVTest {
     private static void testGenerateCSVContent() {
         List <SObject> objects = new List<SObject>{new Account(Name='Test1', AccountNumber='3445556676'), new Account(Name='Test2', BillingCity='Richmond'), new Account(Name='Test3')};
         Test.startTest();
-        String fullCSV = GenerateSObjectCSV.generateCSVContent(objects, null, null);
+        String fullCSV = GenerateSObjectCSV.generateCSVContent(objects, null);
         Test.stopTest();
         List<String> rows = fullCSV.split('\n');
         System.assertEquals(4, rows.size());
@@ -32,17 +32,17 @@ private class GenerateSObjectCSVTest {
         List<Contact> contacts = [Select FirstName, LastName, Email, Related_Contact__r.LastName from Contact];
 
         Test.startTest();
-        String fullCSV = GenerateSObjectCSV.generateCSVContent(contacts, null, new List<String>{'Related_Contact__r.LastName'});
+        String fullCSV = GenerateSObjectCSV.generateCSVContent(contacts, new List<String>{'LastName','Email','Related_Contact__r.LastName'});
         Test.stopTest();
         List<String> rows = fullCSV.split('\n');
         System.assertEquals(4, rows.size());
 
-        System.assertEquals(6, rows[0].split(',').size(), 'Full row text: ' + rows[0]);
-        System.assertEquals('Related_Contact__r.LastName,LastName,Id,Email,Related_Contact__c,FirstName', rows[0]);
+        System.assertEquals(3, rows[0].split(',').size(), 'Full row text: ' + rows[0]);
+        System.assertEquals('LastName,Email,Related_Contact__r.LastName', rows[0]);
 
-        System.assertEquals('null,Test1,' + contact1.Id, rows[1]);
-        System.assertEquals('Test1,Test2,' + contact2.Id + ',abc@gmail.com,'+contact1.Id, rows[2]);
-        System.assertEquals('null,Test3,' + contact3.Id + ',abc@gmail.com,null,Jonny', rows[3]);
+        System.assertEquals('Test1,null,null', rows[1]);
+        System.assertEquals('Test2,abc@gmail.com,Test1', rows[2]);
+        System.assertEquals('Test3,abc@gmail.com,null', rows[3]);
     }
 
     @isTest
