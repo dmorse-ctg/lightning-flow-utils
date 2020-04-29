@@ -9,10 +9,10 @@ global without sharing class GenerateSObjectCSV {
         @InvocableVariable(description='Title of the report' required=true)
         global String documentTitle;
 
-        @InvocableVariable(description='Sharing permissions for the file. Available values: "V" (viewer), "C" (collaborator), "I" (inferred); Default value: "V"')
+        @InvocableVariable(description='Sharing permissions for the file. Valid values: "V" (viewer), "C" (collaborator), "I" (inferred); Default value: "V"')
         global String documentShareType;
 
-        @InvocableVariable(description='Specifies whether the document is available to all users, internal users, or shared users. Available values: "AllUsers", "InternalUsers", "SharedUsers"; Default value: "AllUsers"')
+        @InvocableVariable(description='Specifies whether the document is available to all users, internal users, or shared users. Valid values: "AllUsers", "InternalUsers", "SharedUsers"; Default value: "AllUsers"')
         global String documentVisibility;
     
         @InvocableVariable(description='Optional list of recordIds to link generated document to')
@@ -21,19 +21,13 @@ global without sharing class GenerateSObjectCSV {
         @InvocableVariable(description='Optional comma-separated string of recordIds to link generated document to')
         global String linkedRecordIdsString;
 
-        @InvocableVariable(description='Optional list of primary fields to report on CSV. If null, all populated fields on the sObject will be displayed')
-        global List<String> primaryFields;
+        @InvocableVariable(description='Optional: Explicit collection of fields to report on CSV. If null, all populated fields on the sObject will be displayed. NOTE: If you need to print related fields this parameter is required.')
+        global List<String> fieldsCollection;
 
-        @InvocableVariable(description='Optional comma-separated string of primary fields to report on CSV. If null, all populated fields on the sObject will be displayed')
-        global String primaryFieldsString;
-    
-        @InvocableVariable(description='Optional list of fields to report on CSV that relate upward to the SObject')
-        global List<String> relatedFields;
+        @InvocableVariable(description='Optional: Explicit comma-separated string of fields to report on CSV. If null, all populated fields on the sObject will be displayed. NOTE: If you need to print related fields this parameter is required.')
+        global String fieldsString;
 
-        @InvocableVariable(description='Optional comma-separated string of fields to report on CSV that relate upward to the sObject')
-        global String relatedFieldsString;
-
-        @InvocableVariable(description='If true the action will execute asynchrounously and return values will be posted to a platform event: CSV_Document__e' required=true)
+        @InvocableVariable(description='If true the action will execute asynchrounously and return values will be posted to a platform event: CSV_Document__e')
         global Boolean executeAsynchronously;
     }
 
@@ -57,19 +51,11 @@ global without sharing class GenerateSObjectCSV {
             throw new GenerateCSVException('No input variables provided.');
         }
 
-        List<String> primaryFields = inputVariables[0].primaryFields;
-        if (inputVariables[0].primaryFieldsString != null) {
-            primaryFields = inputVariables[0].primaryFieldsString.split(',');
-            if (primaryFields.size() == 0) {
+        List<String> fieldsList = inputVariables[0].fieldsCollection;
+        if (inputVariables[0].fieldsString != null) {
+            fieldsList = inputVariables[0].fieldsString.split(',');
+            if (fieldsList.size() == 0) {
                 throw new GenerateCSVException('Invalid list of primary fields provided. The string is not comma separated.');
-            }
-        }
-
-        List<String> relatedFields = inputVariables[0].relatedFields;
-        if (inputVariables[0].relatedFieldsString != null) {
-            relatedFields = inputVariables[0].relatedFieldsString.split(',');
-            if (relatedFields.size() == 0) {
-                throw new GenerateCSVException('Invalid list of related fields provided. The string is not comma separated.');
             }
         }
 
@@ -81,34 +67,35 @@ global without sharing class GenerateSObjectCSV {
             }
         }
 
-        if (!inputVariables[0].executeAsynchronously) {
-            String fullCSV = generateCSVContent(inputVariables[0].inputCollection, primaryFields, relatedFields);
-            GenerateSObjectCSV.Outputs returnVal = generateDocument(linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility, fullCSV);
+        Boolean executeAsync = inputVariables[0].executeAsynchronously == null ? false: inputVariables[0].executeAsynchronously;
+        if (!executeAsync) {
+            String fullCSV = generateCSVContent(inputVariables[0].inputCollection, fieldsList);
+            GenerateSObjectCSV.Outputs returnVal = generateDocument(inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility, fullCSV);
             return new List<GenerateSObjectCSV.Outputs>{returnVal};
         }
-        ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(inputVariables[0].inputCollection, primaryFields, relatedFields, linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility));
+        ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(inputVariables[0].inputCollection, fieldsList, inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility));
         Outputs returnVal = new Outputs();
         returnVal.asyncJobId = jobId;
         return new List<GenerateSObjectCSV.Outputs>{returnVal};
     }
 
-    public static String generateCSVContent(List<SObject> objectList, List<String> primaryFields, List<String> relatedFields) {
+    public static String generateCSVContent(List<SObject> objectList, List<String> fieldList) {
         if (objectList[0].getSObjectType().getDescribe().getName() == 'AggregateResult') { 
             // Handle AggregateResult type
-            return generateAggregateResultCSV(objectList, primaryFields);
+            return generateAggregateResultCSV(objectList, fieldList);
         }
         // Handle regular sObject
-        return generateSObjectCSV(objectList, primaryFields, relatedFields);
+        return generateSObjectCSV(objectList, fieldList);
     }
 
     @TestVisible
-    private static String generateAggregateResultCSV(List<SObject> objectList, List<String> primaryFields) {
+    private static String generateAggregateResultCSV(List<SObject> objectList, List<String> fieldList) {
         Set<String> columnHeaders = new Set<String>{};
         List<String> columnRows = new List<String>{};
 
         // If primary fields were provided, set them to the column values
-        if (primaryFields != null) {
-            columnHeaders = new Set<String>(primaryFields);
+        if (fieldList != null) {
+            columnHeaders = new Set<String>(fieldList);
             String columnRow = '';
             for (AggregateResult result: (List<AggregateResult>)objectList) {
                 for (String header: columnHeaders) {
@@ -123,17 +110,17 @@ global without sharing class GenerateSObjectCSV {
             }
         } else {
             // Else, get union of all populated field names
-            List<Map<String, Object>> fieldList = new List<Map<String, Object>>{};
+            List<Map<String, Object>> soFieldList = new List<Map<String, Object>>{};
             for (AggregateResult result: (List<AggregateResult>)objectList) {
-                fieldList.add((Map<String, Object>)JSON.deserializeUntyped(JSON.serialize(result)));
+                soFieldList.add((Map<String, Object>)JSON.deserializeUntyped(JSON.serialize(result)));
             }
 
-            for (Map<String, Object> data: fieldList) {
+            for (Map<String, Object> data: soFieldList) {
                 columnHeaders.addAll(data.keySet());
             }
 
             // 2. Set values in rows
-            for (Map<String, Object> data: fieldList) {
+            for (Map<String, Object> data: soFieldList) {
                 String columnRow = '';
                 for (String header: columnHeaders) {
                     if (data.get(header) != null) {
@@ -153,24 +140,20 @@ global without sharing class GenerateSObjectCSV {
     }
 
     @TestVisible
-    private static String generateSObjectCSV(List<SObject> objectList, List<String> primaryFields, List<String> relatedFields) {
+    private static String generateSObjectCSV(List<SObject> objectList, List<String> fieldList) {
         Set<String> columnHeaders = new Set<String>{};
         List<String> columnRows = new List<String>{};
 
         // If primary fields were provided, set them to the column values
-        if (primaryFields != null) {
-            columnHeaders = new Set<String>(primaryFields);
-        }
-
-        if (relatedFields != null) {
-            columnHeaders.addAll(relatedFields);
+        if (fieldList != null) {
+            columnHeaders = new Set<String>(fieldList);
         }
 
         for (SObject so: objectList) {
             Map<String,Schema.SObjectField> allFields = so.getSObjectType().getDescribe().fields.getMap();
             Map<String, Object> populatedFields = so.getPopulatedFieldsAsMap();
 
-            if (primaryFields == null) {
+            if (fieldList == null) {
                 // If no primary fields are provided, add all populated fields, removing any that aren't in the all fields list
                 Set<String> populatedFieldNames = new Set<String>{};
                 Set<String> allFieldsKeySet = allFields.keySet();
@@ -192,7 +175,7 @@ global without sharing class GenerateSObjectCSV {
                     } else {
                         columnRow += String.valueOf(populatedFields.get(header)).replaceAll('\r\n|\n|\r',' ').escapeCsv();
                     }
-                } else if (relatedFields != null && relatedFields.contains(header)) { // 3. Handle Related Fields
+                } else if (header.contains('.')) { // 3. Handle Related Fields
                     // pull related fields and add data
                     List<String> fieldComponents = header.split('\\.');
                     SObject traverse = so;
