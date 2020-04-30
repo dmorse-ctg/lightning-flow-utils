@@ -1,4 +1,4 @@
-global without sharing class GenerateSObjectCSV {
+global without sharing class ConvertRecordsToCSV {
 
     class GenerateCSVException extends Exception {}
 
