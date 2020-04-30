@@ -6,7 +6,7 @@ global without sharing class ConvertRecordsToCSV {
 
     global class Inputs {
         @InvocableVariable(description='List of sObject records to print in report' required=true)
-        global List<SObject> inputCollection;
+        global List<SObject> sObjectCollection;
     
         @InvocableVariable(description='Title of the report' required=true)
         global String documentTitle;
@@ -43,7 +43,7 @@ global without sharing class ConvertRecordsToCSV {
         @InvocableVariable(description='If you provided linked record Ids, this will returned the related ContentDocumentLinks for each')
         global List<ContentDocumentLink> contentDocumentLinks;
 
-        @InvocableVariable(description='Id of the asynchronous job queued. If the action was executed asynchronously all other return values will be null')
+        @InvocableVariable(description='Id of the asynchronous job queued (AsyncApexJob). If the action was executed asynchronously all other return values will be null. Use this to query for status of the job.')
         global ID asyncJobId;
     }
 
@@ -70,15 +70,15 @@ global without sharing class ConvertRecordsToCSV {
         }
 
         Boolean executeAsync = inputVariables[0].executeAsynchronously == null ? false: inputVariables[0].executeAsynchronously;
-        if (!executeAsync && fieldsList != null && fieldsList.size()*input.inputCollection.size() > SYNC_ITERATION_LIMIT) {
+        if (!executeAsync && fieldsList != null && fieldsList.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
             throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
         }
         if (!executeAsync) {
-            String fullCSV = generateCSVContent(inputVariables[0].inputCollection, fieldsList);
+            String fullCSV = generateCSVContent(inputVariables[0].sObjectCollection, fieldsList);
             GenerateSObjectCSV.Outputs returnVal = generateDocument(inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility, fullCSV);
             return new List<GenerateSObjectCSV.Outputs>{returnVal};
         }
-        ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(inputVariables[0].inputCollection, fieldsList, inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility));
+        ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(inputVariables[0].sObjectCollection, fieldsList, inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility));
         Outputs returnVal = new Outputs();
         returnVal.asyncJobId = jobId;
         return new List<GenerateSObjectCSV.Outputs>{returnVal};
@@ -125,7 +125,7 @@ global without sharing class ConvertRecordsToCSV {
             }
 
             // Check limits
-            if (!executingAsync && columnHeaders.size()*input.inputCollection.size() > SYNC_ITERATION_LIMIT) {
+            if (!executingAsync && columnHeaders.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
                 throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
             }
 
@@ -175,7 +175,7 @@ global without sharing class ConvertRecordsToCSV {
                 columnHeaders.addAll(populatedFieldNames);
 
                 // Check limits
-                if (!executingAsync && columnHeaders.size()*input.inputCollection.size() > SYNC_ITERATION_LIMIT) {
+                if (!executingAsync && columnHeaders.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
                     throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
                 }
             }
