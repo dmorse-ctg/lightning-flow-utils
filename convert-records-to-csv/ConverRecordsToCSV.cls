@@ -280,7 +280,7 @@ global without sharing class ConvertRecordsToCSV {
         cv.VersionData = Blob.valueOf(content);
         cv.Title = documentTitle;
         cv.PathOnClient = documentTitle + '.csv';
-        cv.IsMajorVersion = true;
+        cv.IsMajorVersion = false;
         insert cv;
 
         // Is new document
@@ -322,7 +322,7 @@ global without sharing class ConvertRecordsToCSV {
         	cv.VersionData = Blob.valueOf(latest[0].VersionData.toString() + content);
         	cv.Title = latest[0].Title;
         	cv.PathOnClient = latest[0].Title + '.csv';
-        	cv.IsMajorVersion = true;
+        	cv.IsMajorVersion = false;
             insert cv;
             return cv.Id;
         }
