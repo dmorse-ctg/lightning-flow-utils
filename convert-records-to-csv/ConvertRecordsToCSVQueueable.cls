@@ -12,7 +12,8 @@ public class ConvertRecordsToCSVQueueable implements Queueable {
         this.fieldsList = fieldsList;
         this.contentDocumentId = contentDocumentId;
         this.contentVersionId = contentVersionId;
-        this.contentDocumentLinks = contentDocumentLinks;    }
+        this.contentDocumentLinks = contentDocumentLinks;    
+    }
 
     public void execute(QueueableContext context) { 
 
