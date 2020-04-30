@@ -17,7 +17,7 @@ public class ConvertRecordsToCSVQueueable implements Queueable {
 
     public void execute(QueueableContext context) { 
 
-        String newVersion = ConvertRecordsToCSV.updateDocument(GenerateSObjectCSV.generateCSVContent(objectList, fieldsList, GenerateSObjectCSV.CSVParseType.ROWS_ONLY, true), contentDocumentId);
+        String newVersion = ConvertRecordsToCSV.updateDocument(ConvertRecordsToCSV.generateCSVContent(objectList, fieldsList, ConvertRecordsToCSV.CSVParseType.ROWS_ONLY, true), contentDocumentId);
         this.objectList = null;
 
         // Generate platform event
