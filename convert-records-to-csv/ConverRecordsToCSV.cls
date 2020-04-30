@@ -2,6 +2,8 @@ global without sharing class ConvertRecordsToCSV {
 
     class GenerateCSVException extends Exception {}
 
+    private static Integer SYNC_ITERATION_LIMIT = 200000;
+
     global class Inputs {
         @InvocableVariable(description='List of sObject records to print in report' required=true)
         global List<SObject> inputCollection;
@@ -68,6 +70,9 @@ global without sharing class ConvertRecordsToCSV {
         }
 
         Boolean executeAsync = inputVariables[0].executeAsynchronously == null ? false: inputVariables[0].executeAsynchronously;
+        if (!executeAsync && fieldsList != null && fieldsList.size()*input.inputCollection.size() > SYNC_ITERATION_LIMIT) {
+            throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
+        }
         if (!executeAsync) {
             String fullCSV = generateCSVContent(inputVariables[0].inputCollection, fieldsList);
             GenerateSObjectCSV.Outputs returnVal = generateDocument(inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility, fullCSV);
@@ -79,17 +84,17 @@ global without sharing class ConvertRecordsToCSV {
         return new List<GenerateSObjectCSV.Outputs>{returnVal};
     }
 
-    public static String generateCSVContent(List<SObject> objectList, List<String> fieldList) {
+    public static String generateCSVContent(List<SObject> objectList, List<String> fieldList, Bool executingAsync) {
         if (objectList[0].getSObjectType().getDescribe().getName() == 'AggregateResult') { 
             // Handle AggregateResult type
-            return generateAggregateResultCSV(objectList, fieldList);
+            return generateAggregateResultCSV(objectList, fieldList, executingAsync);
         }
         // Handle regular sObject
-        return generateSObjectCSV(objectList, fieldList);
+        return generateSObjectCSV(objectList, fieldList, executingAsync);
     }
 
     @TestVisible
-    private static String generateAggregateResultCSV(List<SObject> objectList, List<String> fieldList) {
+    private static String generateAggregateResultCSV(List<SObject> objectList, List<String> fieldList, Boolean executingAsync) {
         Set<String> columnHeaders = new Set<String>{};
         List<String> columnRows = new List<String>{};
 
@@ -119,6 +124,11 @@ global without sharing class ConvertRecordsToCSV {
                 columnHeaders.addAll(data.keySet());
             }
 
+            // Check limits
+            if (!executingAsync && columnHeaders.size()*input.inputCollection.size() > SYNC_ITERATION_LIMIT) {
+                throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
+            }
+
             // 2. Set values in rows
             for (Map<String, Object> data: soFieldList) {
                 String columnRow = '';
@@ -140,7 +150,7 @@ global without sharing class ConvertRecordsToCSV {
     }
 
     @TestVisible
-    private static String generateSObjectCSV(List<SObject> objectList, List<String> fieldList) {
+    private static String generateSObjectCSV(List<SObject> objectList, List<String> fieldList, Boolean executingAsync) {
         Set<String> columnHeaders = new Set<String>{};
         List<String> columnRows = new List<String>{};
 
@@ -163,6 +173,11 @@ global without sharing class ConvertRecordsToCSV {
                     }
                 }
                 columnHeaders.addAll(populatedFieldNames);
+
+                // Check limits
+                if (!executingAsync && columnHeaders.size()*input.inputCollection.size() > SYNC_ITERATION_LIMIT) {
+                    throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
+                }
             }
 
             String columnRow = '';
