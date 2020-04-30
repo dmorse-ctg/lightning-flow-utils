@@ -4,6 +4,12 @@ global without sharing class ConvertRecordsToCSV {
 
     private static Integer SYNC_ITERATION_LIMIT = 200000;
 
+    public enum CSVParseType {
+        HEADERS_ONLY,
+        ROWS_ONLY,
+        ALL
+    }
+
     global class Inputs {
         @InvocableVariable(description='List of sObject records to print in report' required=true)
         global List<SObject> sObjectCollection;
@@ -44,78 +50,101 @@ global without sharing class ConvertRecordsToCSV {
         global List<ContentDocumentLink> contentDocumentLinks;
 
         @InvocableVariable(description='Id of the asynchronous job queued (AsyncApexJob). If the action was executed asynchronously all other return values will be null. Use this to query for status of the job.')
-        global ID asyncJobId;
+        global List<ID> asyncJobIds;
     }
 
     @InvocableMethod(label='Generate sObject CSV Report' description='Generates a CSV of all sObject field values for the list provided. Generates a document and optionally links it to the related object provided.' category='Reporting')
-    public static List<GenerateSObjectCSV.Outputs> generateCSV(List<GenerateSObjectCSV.Inputs> inputVariables) {
+    public static List<ConvertRecordsToCSV.Outputs> generateCSV(List<ConvertRecordsToCSV.Inputs> inputVariables) {
         if (inputVariables.size() == 0) {
             throw new GenerateCSVException('No input variables provided.');
         }
 
-        List<String> fieldsList = inputVariables[0].fieldsCollection;
-        if (inputVariables[0].fieldsString != null) {
-            fieldsList = inputVariables[0].fieldsString.split(',');
-            if (fieldsList.size() == 0) {
-                throw new GenerateCSVException('Invalid list of primary fields provided. The string is not comma separated.');
+        List<ConvertRecordsToCSV.Outputs> outputs = new List<ConvertRecordsToCSV.Outputs>{};
+        for (Inputs input: inputVariables) {
+            List<String> fieldsList = input.fieldsCollection;
+            if (input.fieldsString != null) {
+                fieldsList = input.fieldsString.split(',');
+                if (fieldsList.size() == 0) {
+                    throw new GenerateCSVException('Invalid list of primary fields provided. The string is not comma separated.');
+                }
             }
-        }
-
-        List<String> linkedRecordIds = inputVariables[0].linkedRecordIds;
-        if (inputVariables[0].linkedRecordIdsString != null) {
-            linkedRecordIds = inputVariables[0].linkedRecordIdsString.split(',');
-            if (linkedRecordIds.size() == 0) {
-                throw new GenerateCSVException('Invalid list of linked record ids provided. The string is not comma separated.');
+    
+            List<String> linkedRecordIds = input.linkedRecordIds;
+            if (input.linkedRecordIdsString != null) {
+                linkedRecordIds = input.linkedRecordIdsString.split(',');
+                if (linkedRecordIds.size() == 0) {
+                    throw new GenerateCSVException('Invalid list of linked record ids provided. The string is not comma separated.');
+                }
             }
+    
+            Boolean executeAsync = input.executeAsynchronously == null ? false: input.executeAsynchronously;
+            if (!executeAsync && fieldsList != null && fieldsList.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
+                throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
+            }
+    
+            if (!executeAsync) {
+                String fullCSV = generateCSVContent(input.sObjectCollection, fieldsList, CSVParseType.ALL, executeAsync);
+                ConvertRecordsToCSV.Outputs returnVal = generateDocument(input.linkedRecordIds, input.documentTitle, input.documentShareType, input.documentVisibility, fullCSV);
+                return new List<ConvertRecordsToCSV.Outputs>{returnVal};
+            }
+            List<SObject> splitList = new List<SObject>{};
+            while (splitList.size() < input.sObjectCollection.size()) {
+                splitList.add(input.sObjectCollection.remove(0));
+            }
+            String headersCSV = generateCSVContent(input.sObjectCollection, fieldsList, CSVParseType.HEADERS_ONLY, executeAsync);
+            ConvertRecordsToCSV.Outputs initialDoc = generateDocument(input.linkedRecordIds, input.documentTitle, input.documentShareType, input.documentVisibility, headersCSV);
+               ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId));
+               ID jobId2 = System.enqueueJob(new GenerateCSVContentQueueable(splitList, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId));
+            Outputs returnVal = new Outputs();
+            returnVal.asyncJobIds = new List<ID>{jobId, jobId2};
+    
+            outputs.add(returnVal);
         }
-
-        Boolean executeAsync = inputVariables[0].executeAsynchronously == null ? false: inputVariables[0].executeAsynchronously;
-        if (!executeAsync && fieldsList != null && fieldsList.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
-            throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
-        }
-        if (!executeAsync) {
-            String fullCSV = generateCSVContent(inputVariables[0].sObjectCollection, fieldsList);
-            GenerateSObjectCSV.Outputs returnVal = generateDocument(inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility, fullCSV);
-            return new List<GenerateSObjectCSV.Outputs>{returnVal};
-        }
-        ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(inputVariables[0].sObjectCollection, fieldsList, inputVariables[0].linkedRecordIds, inputVariables[0].documentTitle, inputVariables[0].documentShareType, inputVariables[0].documentVisibility));
-        Outputs returnVal = new Outputs();
-        returnVal.asyncJobId = jobId;
-        return new List<GenerateSObjectCSV.Outputs>{returnVal};
+        return outputs;
     }
 
-    public static String generateCSVContent(List<SObject> objectList, List<String> fieldList, Bool executingAsync) {
+    public static String generateCSVContent(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync) {
         if (objectList[0].getSObjectType().getDescribe().getName() == 'AggregateResult') { 
             // Handle AggregateResult type
-            return generateAggregateResultCSV(objectList, fieldList, executingAsync);
+            return generateAggregateResultCSV(objectList, fieldList, parseType, executingAsync);
         }
         // Handle regular sObject
-        return generateSObjectCSV(objectList, fieldList, executingAsync);
+        return ConvertRecordsToCSV(objectList, fieldList, parseType, executingAsync);
     }
 
     @TestVisible
-    private static String generateAggregateResultCSV(List<SObject> objectList, List<String> fieldList, Boolean executingAsync) {
+    private static String generateAggregateResultCSV(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync) {
         Set<String> columnHeaders = new Set<String>{};
         List<String> columnRows = new List<String>{};
+
+        String columnHeadersCSV = '';
+        String columnRowsCSV = '';
 
         // If primary fields were provided, set them to the column values
         if (fieldList != null) {
             columnHeaders = new Set<String>(fieldList);
-            String columnRow = '';
-            for (AggregateResult result: (List<AggregateResult>)objectList) {
-                for (String header: columnHeaders) {
-                    Object fieldValue = result.get(header);
-                    if (fieldValue != null) {
-                        columnRow += String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').replace(',', '');
-                    } else {
-                        columnRow += 'null';
+            if (parseType == CSVParseType.HEADERS_ONLY || parseType == CSVParseType.ALL) {
+                columnHeadersCSV = String.join(new List<String>(columnHeaders), ',') + '\n';
+            }
+            
+            if (parseType == CSVParseType.ROWS_ONLY || parseType == CSVParseType.ALL) {
+                String columnRow = '';
+                for (AggregateResult result: (List<AggregateResult>)objectList) {
+                    for (String header: columnHeaders) {
+                        Object fieldValue = result.get(header);
+                        if (fieldValue != null) {
+                            columnRow += String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').replace(',', '');
+                        } else {
+                            columnRow += 'null';
+                        }
+                        columnRow += ',';
                     }
-                    columnRow += ',';
                 }
+                columnRowsCSV = String.join(new List<String>(columnHeaders), ',') + '\n';
             }
         } else {
-            // Else, get union of all populated field names
             List<Map<String, Object>> soFieldList = new List<Map<String, Object>>{};
+            // Else, get union of all populated field names
             for (AggregateResult result: (List<AggregateResult>)objectList) {
                 soFieldList.add((Map<String, Object>)JSON.deserializeUntyped(JSON.serialize(result)));
             }
@@ -125,38 +154,49 @@ global without sharing class ConvertRecordsToCSV {
             }
 
             // Check limits
-            if (!executingAsync && columnHeaders.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
+            if (!executingAsync && parseType != CSVParseType.HEADERS_ONLY && columnHeaders.size()*objectList.size() > SYNC_ITERATION_LIMIT) {
                 throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
             }
-
-            // 2. Set values in rows
-            for (Map<String, Object> data: soFieldList) {
-                String columnRow = '';
-                for (String header: columnHeaders) {
-                    if (data.get(header) != null) {
-                        columnRow += String.valueOf(data.get(header)).replaceAll('\r\n|\n|\r',' ').replace(',', '');
-                        // columnRow += getDisplayTextForFieldType(fieldValue, fieldType);
-                    } else {
-                        columnRow += 'null';
+            
+            if (parseType == CSVParseType.HEADERS_ONLY || parseType == CSVParseType.ALL) {
+                columnHeadersCSV = String.join(new List<String>(columnHeaders), ',') + '\n';
+            }
+            
+            if (parseType == CSVParseType.ROWS_ONLY || parseType == CSVParseType.ALL) {
+                // 2. Set values in rows
+                for (Map<String, Object> data: soFieldList) {
+                    String columnRow = '';
+                    for (String header: columnHeaders) {
+                        if (data.get(header) != null) {
+                            columnRow += String.valueOf(data.get(header)).replaceAll('\r\n|\n|\r',' ').replace(',', '');
+                            // columnRow += getDisplayTextForFieldType(fieldValue, fieldType);
+                        } else {
+                            columnRow += 'null';
+                        }
+                        columnRow += ',';
                     }
-                    columnRow += ',';
+                    columnRows.add(columnRow);
                 }
-                columnRows.add(columnRow);
+                columnRowsCSV = String.join(columnRows, '\n');
             }
         }
-
-        String columnHeadersCSV = String.join(new List<String>(columnHeaders), ',') + '\n';
-        return columnHeadersCSV + String.join(columnRows, '\n');
+        return columnHeadersCSV + columnRowsCSV;
     }
 
     @TestVisible
-    private static String generateSObjectCSV(List<SObject> objectList, List<String> fieldList, Boolean executingAsync) {
+    private static String ConvertRecordsToCSV(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync) {
         Set<String> columnHeaders = new Set<String>{};
         List<String> columnRows = new List<String>{};
+
+        String columnHeadersCSV = '';
+        String columnRowsCSV = '';
 
         // If primary fields were provided, set them to the column values
         if (fieldList != null) {
             columnHeaders = new Set<String>(fieldList);
+            if (parseType == CSVParseType.HEADERS_ONLY || parseType == CSVParseType.ALL) {
+            	columnHeadersCSV = String.join(new List<String>(columnHeaders), ',') + '\n';
+            }
         }
 
         for (SObject so: objectList) {
@@ -175,72 +215,79 @@ global without sharing class ConvertRecordsToCSV {
                 columnHeaders.addAll(populatedFieldNames);
 
                 // Check limits
-                if (!executingAsync && columnHeaders.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
+                if (!executingAsync && parseType != CSVParseType.HEADERS_ONLY && columnHeaders.size()*objectList.size() > SYNC_ITERATION_LIMIT) {
                     throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
                 }
-            }
-
-            String columnRow = '';
-            for (String header: columnHeaders) {
-                if (populatedFields.get(header) != null) {
-                    Schema.SObjectField field = allFields.get(header);
-                    if (field != null && (field.getDescribe().getType() == Schema.DisplayType.ADDRESS || field.getDescribe().getType() == Schema.DisplayType.LOCATION)) {
-                        // handle compound fields like address and location
-                        columnRow += JSON.serialize(populatedFields.get(header)).escapeCsv();
-                    } else {
-                        columnRow += String.valueOf(populatedFields.get(header)).replaceAll('\r\n|\n|\r',' ').escapeCsv();
-                    }
-                } else if (header.contains('.')) { // 3. Handle Related Fields
-                    // pull related fields and add data
-                    List<String> fieldComponents = header.split('\\.');
-                    SObject traverse = so;
-                    for (Integer i = 0; i < fieldComponents.size(); i++) {
-                        String comp = fieldComponents[i];
-                        System.debug('Searching component: ' + comp);
-
-                        if (i < fieldComponents.size() - 1) {
-                            traverse = traverse.getSObject(comp);
-                            System.debug('Related object: ' + traverse);
-                        } else if (traverse != null) {
-                            // get field value for the last field component
-                            System.debug('Getting related field');
-                            Object fieldValue = traverse.get(comp);
-                            if (fieldValue == null) {
-                                throw new GenerateCSVException('Invalid related list provided. Could not find field ' + comp + ' on ' + traverse);
-                            }
-                            Schema.DisplayType fieldType = traverse.getSObjectType().getDescribe().fields.getMap().get(comp).getDescribe().getType();
-                            columnRow += getDisplayTextForFieldType(fieldValue, fieldType);
-                        } else {
-                            columnRow += 'null';
-                        }
-                    }
-                } else {
-                    columnRow += 'null';
+                
+                if (parseType == CSVParseType.HEADERS_ONLY || parseType == CSVParseType.ALL) {
+                	columnHeadersCSV = String.join(new List<String>(columnHeaders), ',') + '\n';
                 }
-                columnRow += ',';
             }
 
-            columnRow = columnRow.removeEnd(',');
-            columnRows.add(columnRow);
+            if (parseType == CSVParseType.ROWS_ONLY || parseType == CSVParseType.ALL) {
+                String columnRow = '';
+                for (String header: columnHeaders) {
+                    if (populatedFields.get(header) != null) {
+                        Schema.SObjectField field = allFields.get(header);
+                        if (field != null && (field.getDescribe().getType() == Schema.DisplayType.ADDRESS || field.getDescribe().getType() == Schema.DisplayType.LOCATION)) {
+                            // handle compound fields like address and location
+                            columnRow += JSON.serialize(populatedFields.get(header)).escapeCsv();
+                        } else {
+                            columnRow += String.valueOf(populatedFields.get(header)).replaceAll('\r\n|\n|\r',' ').escapeCsv();
+                        }
+                    } else if (header.contains('.')) { // 3. Handle Related Fields
+                        // pull related fields and add data
+                        List<String> fieldComponents = header.split('\\.');
+                        SObject traverse = so;
+                        for (Integer i = 0; i < fieldComponents.size(); i++) {
+                            String comp = fieldComponents[i];
+                            System.debug('Searching component: ' + comp);
+    
+                            if (i < fieldComponents.size() - 1) {
+                                traverse = traverse.getSObject(comp);
+                                System.debug('Related object: ' + traverse);
+                            } else if (traverse != null) {
+                                // get field value for the last field component
+                                System.debug('Getting related field');
+                                Object fieldValue = traverse.get(comp);
+                                if (fieldValue == null) {
+                                    throw new GenerateCSVException('Invalid related list provided. Could not find field ' + comp + ' on ' + traverse);
+                                }
+                                Schema.DisplayType fieldType = traverse.getSObjectType().getDescribe().fields.getMap().get(comp).getDescribe().getType();
+                                columnRow += getDisplayTextForFieldType(fieldValue, fieldType);
+                            } else {
+                                columnRow += 'null';
+                            }
+                        }
+                    } else {
+                        columnRow += 'null';
+                    }
+                    columnRow += ',';
+                }
+    
+                columnRow = columnRow.removeEnd(',');
+                columnRows.add(columnRow);  
+                columnRowsCSV = String.join(columnRows, '\n');
+            }
         }
-        String columnHeadersCSV = String.join(new List<String>(columnHeaders), ',') + '\n';
-        return columnHeadersCSV + String.join(columnRows, '\n');
+        return columnHeadersCSV + columnRowsCSV;
     }
 
-    public static GenerateSObjectCSV.Outputs generateDocument(List<String> linkedRecordIds, String documentTitle, String documentShareType, String documentVisibility, String content) {
+    public static ConvertRecordsToCSV.Outputs generateDocument(List<String> linkedRecordIds, String documentTitle, String documentShareType, String documentVisibility, String content) {
+        List<ContentDocumentLink> links = new List<ContentDocumentLink> {};
+        
         ContentVersion cv = new ContentVersion();
-        cv.VersionData =  Blob.valueOf(content);
+        cv.VersionData = Blob.valueOf(content);
         cv.Title = documentTitle;
         cv.PathOnClient = documentTitle + '.csv';
         cv.IsMajorVersion = true;
         insert cv;
 
+        // Is new document
         List<ContentDocument> doc = [Select Id from ContentDocument WHERE LatestPublishedVersionId =: cv.Id LIMIT 1];
         if (doc.size() == 0) {
             throw new GenerateCSVException('Document failed to generate for CSV content.');
         }
-
-        List<ContentDocumentLink> links = new List<ContentDocumentLink> {};
         if (linkedRecordIds != null) {
             for (String recordId: linkedRecordIds) {
                 ContentDocumentLink cdl = new ContentDocumentLink();
@@ -261,11 +308,25 @@ global without sharing class ConvertRecordsToCSV {
             insert links;
         }
 
-        GenerateSObjectCSV.Outputs returnVal = new GenerateSObjectCSV.Outputs();
+        ConvertRecordsToCSV.Outputs returnVal = new ConvertRecordsToCSV.Outputs();
         returnVal.contentDocumentId=doc[0].Id;
         returnVal.contentVersionId=cv.Id;
         returnVal.contentDocumentLinks=links;
         return returnVal;
+    }
+    
+    public static String updateDocument(String content, String documentId) {
+        List<ContentVersion> latest = [SELECT VersionData, Title FROM ContentVersion WHERE ContentDocumentId = :documentId AND IsLatest = true];
+        if (latest.size() > 0) {
+        	ContentVersion cv = new ContentVersion();
+        	cv.VersionData = Blob.valueOf(latest[0].VersionData.toString() + content);
+        	cv.Title = latest[0].Title;
+        	cv.PathOnClient = latest[0].Title + '.csv';
+        	cv.IsMajorVersion = true;
+            insert cv;
+            return cv.Id;
+        }
+		throw new GenerateCSVException('Unable to update document because one does not exist for id: ' + documentId);
     }
 
     private static String getDisplayTextForFieldType(Object fieldValue, Schema.DisplayType fieldType) {
@@ -275,7 +336,7 @@ global without sharing class ConvertRecordsToCSV {
         } else if (fieldType == Schema.DisplayType.DATE || fieldType == Schema.DisplayType.DATETIME) {
             return formatDateTime((String)fieldValue);
         } else {
-            return String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').escapeCsv();
+            return String.valueOf(fieldValue).replaceAll('\r\n|\n|\r|\t',' ').escapeCsv();
         }
     }
 
@@ -295,7 +356,7 @@ global without sharing class ConvertRecordsToCSV {
         if (isDate) {
             fieldValue = fieldValue.replaceAll(', ', '/');
             fieldValue = fieldValue.replaceAll('/ ', '/');
-            fieldValue += ', 00:00 AM';
+            fieldValue += ', 12:00 AM';
         }
         return Datetime.parse(fieldValue).format('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'');
     }
@@ -305,7 +366,11 @@ global without sharing class ConvertRecordsToCSV {
         Datetime dt = Datetime.newInstance(2020, 1, 1);
         Map<String, String> resultMap = new Map<String, String>();
         for (Integer i = 1; i < 12; i++) {
-            resultMap.put(dt.format('MMMM').toLowerCase(), String.valueOf(i));
+            String num = String.valueOf(i);
+            if (num.length() == 1) {
+                num = '0' + num;
+            }
+            resultMap.put(dt.format('MMMM').toLowerCase(), num);
             dt = dt.addMonths(1);
         }
         return resultMap;

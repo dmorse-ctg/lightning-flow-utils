@@ -1,23 +1,24 @@
-public class GenerateCSVContentQueueable implements Queueable {
+public class ConvertRecordsToCSVQueueable implements Queueable {
     private List<SObject> objectList;
     private List<String> fieldsList;
-    private List<String> linkedRecordIds;
-    private String documentTitle;
-    private String documentShareType;
-    private String documentVisibility;
 
-    public GenerateCSVContentQueueable(List<SObject> objectList, List<String> fieldsList, List<String> linkedRecordIds, String documentTitle, String documentShareType, String documentVisibility) {
+    //Document Info
+    private String contentDocumentId;
+    private String contentVersionId;
+    private List<ContentDocumentLink> contentDocumentLinks;
+
+    public ConvertRecordsToCSVQueueable(List<SObject> objectList, List<String> fieldsList, List<ContentDocumentLink> contentDocumentLinks, String contentVersionId, String contentDocumentId) {
         this.objectList = objectList;
         this.fieldsList = fieldsList;
-        this.linkedRecordIds = linkedRecordIds;
-        this.documentTitle = documentTitle;
-        this.documentShareType = documentShareType;
-        this.documentVisibility = documentVisibility;
-    }
+        this.contentDocumentId = contentDocumentId;
+        this.contentVersionId = contentVersionId;
+        this.contentDocumentLinks = contentDocumentLinks;    }
 
-    public void execute(QueueableContext context) {
-        String content = GenerateSObjectCSV.generateCSVContent(objectList, fieldsList);  
-        GenerateSObjectCSV.Outputs returnVal = GenerateSObjectCSV.generateDocument(linkedRecordIds, documentTitle, documentShareType, documentVisibility, content) ;
+    public void execute(QueueableContext context) { 
+
+        String newVersion = ConvertRecordsToCSV.updateDocument(GenerateSObjectCSV.generateCSVContent(objectList, fieldsList, GenerateSObjectCSV.CSVParseType.ROWS_ONLY, true), contentDocumentId);
+        this.objectList = null;
+
         // Generate platform event
         // CSV_Document__e documentCompleteEvent = new CSV_Document__e();
         // documentCompleteEvent.ContentDocumentId = returnVal.contentDocumentId;
