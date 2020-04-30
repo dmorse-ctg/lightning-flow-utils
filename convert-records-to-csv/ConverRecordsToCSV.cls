@@ -2,6 +2,7 @@ global without sharing class ConvertRecordsToCSV {
 
     class GenerateCSVException extends Exception {}
 
+    // Max number of iterations that can occur before we hit heap limits running synchronously
     private static Integer SYNC_ITERATION_LIMIT = 200000;
 
     public enum CSVParseType {
@@ -108,10 +109,11 @@ global without sharing class ConvertRecordsToCSV {
             // Handle AggregateResult type
             return generateAggregateResultCSV(objectList, fieldList, parseType, executingAsync);
         }
-        // Handle regular sObject
+        // Handle record type sObject
         return ConvertRecordsToCSV(objectList, fieldList, parseType, executingAsync);
     }
 
+    // Generate headers and rows for queries that return AggregateResult type sObjects
     @TestVisible
     private static String generateAggregateResultCSV(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync) {
         Set<String> columnHeaders = new Set<String>{};
@@ -183,6 +185,7 @@ global without sharing class ConvertRecordsToCSV {
         return columnHeadersCSV + columnRowsCSV;
     }
 
+    // Generate headers and rows for queries that return record type sObjects
     @TestVisible
     private static String ConvertRecordsToCSV(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync) {
         Set<String> columnHeaders = new Set<String>{};
@@ -273,9 +276,11 @@ global without sharing class ConvertRecordsToCSV {
         return columnHeadersCSV + columnRowsCSV;
     }
 
+    // Generate a document with the CSV content and upload to Salesforce files
     public static ConvertRecordsToCSV.Outputs generateDocument(List<String> linkedRecordIds, String documentTitle, String documentShareType, String documentVisibility, String content) {
         List<ContentDocumentLink> links = new List<ContentDocumentLink> {};
         
+        // Generate document version; This is what contains the content
         ContentVersion cv = new ContentVersion();
         cv.VersionData = Blob.valueOf(content);
         cv.Title = documentTitle;
@@ -283,11 +288,13 @@ global without sharing class ConvertRecordsToCSV {
         cv.IsMajorVersion = false;
         insert cv;
 
-        // Is new document
         List<ContentDocument> doc = [Select Id from ContentDocument WHERE LatestPublishedVersionId =: cv.Id LIMIT 1];
         if (doc.size() == 0) {
             throw new GenerateCSVException('Document failed to generate for CSV content.');
         }
+
+        // If the user provided linkedRecordIds, create ContentDocumentLink records for each of them; 
+        // This will make the document appear in the 'Related' section of the record layout
         if (linkedRecordIds != null) {
             for (String recordId: linkedRecordIds) {
                 ContentDocumentLink cdl = new ContentDocumentLink();
@@ -315,6 +322,7 @@ global without sharing class ConvertRecordsToCSV {
         return returnVal;
     }
     
+    // Update existing document with new version content; Used when batching a large set of records asynchronously
     public static String updateDocument(String content, String documentId) {
         List<ContentVersion> latest = [SELECT VersionData, Title FROM ContentVersion WHERE ContentDocumentId = :documentId AND IsLatest = true];
         if (latest.size() > 0) {
@@ -329,6 +337,7 @@ global without sharing class ConvertRecordsToCSV {
 		throw new GenerateCSVException('Unable to update document because one does not exist for id: ' + documentId);
     }
 
+    // Transform text in certain fields to a readable string
     private static String getDisplayTextForFieldType(Object fieldValue, Schema.DisplayType fieldType) {
         if (fieldType == Schema.DisplayType.ADDRESS || fieldType == Schema.DisplayType.LOCATION) {
             // handle compound fields
@@ -340,6 +349,7 @@ global without sharing class ConvertRecordsToCSV {
         }
     }
 
+    // Standardize date/time formatting to readable value
     private static String formatDateTime(String fieldValue) {
         // Datetime is already formatted
         if (fieldValue.contains('t') && fieldValue.contains('z') && fieldValue.indexOf('t') == 11) {
@@ -361,7 +371,7 @@ global without sharing class ConvertRecordsToCSV {
         return Datetime.parse(fieldValue).format('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'');
     }
 
-    //Workaround to get local month name to month number map
+    // Workaround to get local month name to month number map
     private static Map<String, String> getLocalMonthNumbers() {
         Datetime dt = Datetime.newInstance(2020, 1, 1);
         Map<String, String> resultMap = new Map<String, String>();
