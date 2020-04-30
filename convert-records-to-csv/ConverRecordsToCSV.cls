@@ -93,8 +93,8 @@ global without sharing class ConvertRecordsToCSV {
             }
             String headersCSV = generateCSVContent(input.sObjectCollection, fieldsList, CSVParseType.HEADERS_ONLY, executeAsync);
             ConvertRecordsToCSV.Outputs initialDoc = generateDocument(input.linkedRecordIds, input.documentTitle, input.documentShareType, input.documentVisibility, headersCSV);
-               ID jobId = System.enqueueJob(new GenerateCSVContentQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId));
-               ID jobId2 = System.enqueueJob(new GenerateCSVContentQueueable(splitList, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId));
+               ID jobId = System.enqueueJob(new ConvertRecordsToCSVQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId));
+               ID jobId2 = System.enqueueJob(new ConvertRecordsToCSVQueueable(splitList, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId));
             Outputs returnVal = new Outputs();
             returnVal.asyncJobIds = new List<ID>{jobId, jobId2};
     
