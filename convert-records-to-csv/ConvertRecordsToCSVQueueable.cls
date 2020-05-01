@@ -1,7 +1,7 @@
 global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     class GenerateCSVException extends Exception {}
     
-    private static Integer SYNC_ITERATION_LIMIT = 20000;
+    private static Integer SYNC_ITERATION_LIMIT = 200000;
     private static String DOC_START_CONTENT = '\n';
 
     private List<SObject> objectList;
@@ -75,22 +75,21 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         String newVersion = ConvertRecordsToCSVQueueable.updateDocument(ConvertRecordsToCSVQueueable.generateCSVContent(objectList, fieldsList, parseType, true), contentDocumentId);
         if (nextQueueable != null) {
             System.enqueueJob(nextQueueable);
+        } else {
+            // Generate platform event
+            // CSV_Document__e documentCompleteEvent = new CSV_Document__e();
+            // documentCompleteEvent.ContentDocumentId = this.contentDocumentId;
+            // documentCompleteEvent.ContentDocumentLinks = this.contentDocumentLinks;
+            // documentCompleteEvent.ContentVersionId = newVersion;
+    
+            // List<Database.SaveResult> results = EventBus.publish(new List<CSV_Document__e>{documentCompleteEvent});
+            // for (Database.SaveResult result: results) {
+            //     if (!result.isSuccess()) {
+            //         // potentially throw and error here?
+            //         System.debug('CSV document event publication failed.');
+            //     }
+            // }
         }
-        
-        // Generate platform event
-        // List<ContentVersion> allDocs = [SELECT VersionData, Title FROM ContentVersion WHERE ContentDocumentId = :documentId];
-        // CSV_Document__e documentCompleteEvent = new CSV_Document__e();
-        // documentCompleteEvent.ContentDocumentId = returnVal.contentDocumentId;
-        // documentCompleteEvent.ContentDocumentLinks = returnVal.contentDocumentLinks;
-        // documentCompleteEvent.ContentVersionId = returnVal.contentVersionId;
-
-        // List<Database.SaveResult> results = EventBus.publish(new List<CSV_Document__e>{documentCompleteEvent});
-        // for (Database.SaveResult result: results) {
-        //     if (!result.isSuccess()) {
-        //         // potentially throw and error here?
-        //         System.debug('CSV document event publication failed.');
-        //     }
-        // }
     }
     @InvocableMethod(label='Convert Records to CSV' description='Generates a CSV given a list of sObjects, uplooads it to Files, and optionally links it to a list of related records.' category='Reporting')
     global static List<ConvertRecordsToCSVQueueable.Outputs> generateCSV(List<ConvertRecordsToCSVQueueable.Inputs> inputVariables) {
@@ -132,7 +131,6 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             List<List<SObject>> sObjectLists = new List<List<SObject>>{};
             List<ID> jobIds = new List<ID>{};
             Set<String> populatedFields = input.sObjectCollection[0].getPopulatedFieldsAsMap().keySet();
-            System.debug('Logs: Populated fields count: ' + populatedFields.size());
             Integer numJobs = Math.max(Math.round(Decimal.valueOf(populatedFields.size()*input.sObjectCollection.size()) / SYNC_ITERATION_LIMIT), 1);
             System.debug('Logs: Num jobs: ' + numJobs);
             // Split the list across async jobs
