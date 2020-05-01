@@ -10,7 +10,7 @@ This action takes a list of sObject records, generates a CSV report and uploads 
 
 ### Inputs
 Required:
-- sObject List
+- sObject Collection
 - Document Title
 
 _Optional:_
