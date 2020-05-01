@@ -4,6 +4,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     private static Integer SYNC_ITERATION_LIMIT = 200000;
     private static String DOC_START_CONTENT = '\n';
 
+    private Inputs input;
     private List<SObject> objectList;
     private List<String> fieldsList;
     private String contentDocumentId;
@@ -43,8 +44,8 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         @InvocableVariable(description='Optional: Explicit comma-separated string of fields to report on CSV. If null, all populated fields on the sObject will be displayed. NOTE: If you need to print related fields this parameter is required.')
         global String fieldsString;
 
-        @InvocableVariable(description='If true the action will execute asynchrounously and return values will be posted to a platform event: CSV_Document__e')
-        global Boolean executeAsynchronously;
+        @InvocableVariable(description='If provided, the action will execute asynchrounously and return values will be posted to a platform event: CSV_Document__e. Use this identifier to listen for the platform event')
+        global String executeAsyncIdentifier;
     }
 
     global class Outputs {
@@ -60,19 +61,22 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         @InvocableVariable(description='Id of the asynchronous job queued (AsyncApexJob). If the action was executed asynchronously all other return values will be null. Use this to query for status of the job.')
         global List<ID> asyncJobIds;
     }
-
-    global ConvertRecordsToCSVQueueable(List<SObject> objectList, List<String> fieldsList, List<ID> contentDocumentLinks, String contentVersionId, String contentDocumentId, CSVParseType parseType, ConvertRecordsToCSVQueueable nextQueueable) {
-        this.objectList = objectList;
-        this.fieldsList = fieldsList;
-        this.contentDocumentId = contentDocumentId;
-        this.contentVersionId = contentVersionId;
-        this.contentDocumentLinks = contentDocumentLinks;  
-        this.parseType = parseType;
-        this.nextQueueable = nextQueueable;
+    
+    // Use this queueable initializer if there is only one queueable task to be completed
+    global ConvertRecordsToCSVQueueable(Inputs input) {
+        this.input = input;
     }
 
-    global void execute(QueueableContext context) { 
-        String newVersion = ConvertRecordsToCSVQueueable.updateDocument(ConvertRecordsToCSVQueueable.generateCSVContent(objectList, fieldsList, parseType, true), contentDocumentId);
+    global void execute(QueueableContext context) {
+        string contentVersion = '';
+        if (this.input != null) {
+            Outputs returnVal = generateDocument(this.input.linkedRecordIds, this.input.documentTitle, this.input.documentShareType, this.input.documentVisibility, generateCSVContent(input.sObjectCollection, input.fieldsCollection, CSVParseType.ALL, true));
+            contentVersion = returnVal.contentVersionId;
+            this.contentDocumentId = returnVal.contentDocumentId;
+            this.contentDocumentLinks = returnVal.contentDocumentLinks;
+        } else {
+        	contentVersion = updateDocument(generateCSVContent(objectList, fieldsList, parseType, true), contentDocumentId);
+        }
         if (nextQueueable != null) {
             System.enqueueJob(nextQueueable);
         } else {
@@ -126,7 +130,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 }
             }
     
-            Boolean executeAsync = input.executeAsynchronously == null ? false: input.executeAsynchronously;
+            Boolean executeAsync = input.executeAsyncIdentifier != null;
             if (!executeAsync && fieldsList != null && fieldsList.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
                 throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
             }
@@ -137,8 +141,9 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 return new List<ConvertRecordsToCSVQueueable.Outputs>{returnVal};
             }
             
-            ConvertRecordsToCSVQueueable.Outputs initialDoc = generateDocument(input.linkedRecordIds, input.documentTitle, input.documentShareType, input.documentVisibility, DOC_START_CONTENT);
-            ID jobId = System.enqueueJob(new ConvertRecordsToCSVQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ALL, null));
+            input.fieldsCollection = fieldsList;
+            input.linkedRecordIds = linkedRecordIds;
+            ID jobId = System.enqueueJob(new ConvertRecordsToCSVQueueable(input));
 
             Outputs returnVal = new Outputs();
             returnVal.asyncJobIds = new List<ID>{jobId};
@@ -366,7 +371,11 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         	cv.Title = latestDoc[0].Title;
             cv.PathOnClient = cv.Title + '.csv';
         	cv.IsMajorVersion = false;
-            insert cv;
+            
+            Database.SaveResult sr = Database.insert(cv, false);
+            for(Database.Error err : sr.getErrors()) {
+                throw new GenerateCSVException('Unable to update document with CSV content. Reason: ' + err.getMessage() + '. Fields that affected this error: ' + err.getFields());
+            }
             return cv.Id;
         }
 		throw new GenerateCSVException('Unable to update document because one does not exist for id: ' + documentId);
