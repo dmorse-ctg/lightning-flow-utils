@@ -17,8 +17,9 @@ Required:
 
 _Optional:_
 - Linked record ids for document
-- Custom CSV columns names (sObject primary + releated fields)
+- Custom CSV columns names (sObject primary + related fields)
 - Execute asynchronously
+- Supports generating a platform event of type 'CSV_Document__e'. The platform event does not come packaged with this, you will need to create it manually for now.
 
 ### Outputs
 If the action is executed asynchronously (indicated via parameter), then the job id(s) for the execution are returned imediately and document information is published via platform event. Otherwise CSV document information is returned immediately. 
