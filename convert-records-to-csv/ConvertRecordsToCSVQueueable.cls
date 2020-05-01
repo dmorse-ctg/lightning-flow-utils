@@ -76,13 +76,13 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         if (nextQueueable != null) {
             System.enqueueJob(nextQueueable);
         } else {
-            // Generate platform event
-            // CSV_Document__e documentCompleteEvent = new CSV_Document__e();
-            // documentCompleteEvent.ContentDocumentId_c = this.contentDocumentId;
-            // documentCompleteEvent.ContentDocumentLinks_c = String.join(this.contentDocumentLinks, ',');
-            // documentCompleteEvent.ContentVersionId_c = newVersion;
+            //Generate platform event
+            // CSV_Export_Event__e documentCompleteEvent = new CSV_Export_Event__e();
+            // documentCompleteEvent.ContentDocumentId__c = this.contentDocumentId;
+            // documentCompleteEvent.ContentDocumentLinks__c = String.join(this.contentDocumentLinks, ',');
+            // documentCompleteEvent.ContentVersionId__c = newVersion;
     
-            // List<Database.SaveResult> results = EventBus.publish(new List<CSV_Document__e>{documentCompleteEvent});
+            // List<Database.SaveResult> results = EventBus.publish(new List<CSV_Export_Event__e>{documentCompleteEvent});
             // for (Database.SaveResult result: results) {
             //     if (!result.isSuccess()) {
             //         // potentially throw and error here?
@@ -97,8 +97,19 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             throw new GenerateCSVException('No input variables provided.');
         }
 
+        Integer currentHeap = Math.round(((Limits.getHeapSize() / Limits.getLimitHeapSize())*100));
+        System.debug('Logs: Limits: HEAP: Used: ' + currentHeap + '%');
+        if (currentHeap == 100) {
+        	throw new GenerateCSVException('Heap Limit Reached. Input is too large for processing.');
+        }
+
         List<ConvertRecordsToCSVQueueable.Outputs> outputs = new List<ConvertRecordsToCSVQueueable.Outputs>{};
         for (Inputs input: inputVariables) {
+            if (input.sObjectCollection == null || input.sObjectCollection.size() == 0) {
+                // Nothing to do here
+                return new List<Outputs>{};
+            }
+            
             List<String> fieldsList = input.fieldsCollection;
             if (input.fieldsString != null) {
                 fieldsList = input.fieldsString.split(',');
@@ -127,37 +138,10 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             }
             
             ConvertRecordsToCSVQueueable.Outputs initialDoc = generateDocument(input.linkedRecordIds, input.documentTitle, input.documentShareType, input.documentVisibility, DOC_START_CONTENT);
-
-            List<List<SObject>> sObjectLists = new List<List<SObject>>{};
-            List<ID> jobIds = new List<ID>{};
-            Set<String> populatedFields = input.sObjectCollection[0].getPopulatedFieldsAsMap().keySet();
-            Integer numJobs = Math.max(Math.round(Decimal.valueOf(populatedFields.size()*input.sObjectCollection.size()) / SYNC_ITERATION_LIMIT), 1);
-            System.debug('Logs: Num jobs: ' + numJobs);
-            // Split the list across async jobs
-            if (numJobs > 1) {
-            	for (Integer i = 0; i < numJobs - 1; i++) {
-                	sObjectLists.add(new List<SObject>{});
-            	}
-                while (sObjectLists[0].size() < input.sObjectCollection.size()) {
-                    if (numJobs > 2) {
-                        for (List<SObject> slist: sObjectLists) {
-                            slist.add(input.sObjectCollection.remove(0));
-                        }                    
-                    } else {
-                        sObjectLists[0].add(input.sObjectCollection.remove(0));
-                    }
-                }
-                ConvertRecordsToCSVQueueable prev;
-                for (List<SObject> sList: sObjectLists) {
-                    prev = new ConvertRecordsToCSVQueueable(sList, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ROWS_ONLY, prev);
-                }
-                jobIds.add(System.enqueueJob(new ConvertRecordsToCSVQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ALL, prev)));
-            } else {
-                jobIds.add(System.enqueueJob(new ConvertRecordsToCSVQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ALL, null)));
-            }
+            ID jobId = System.enqueueJob(new ConvertRecordsToCSVQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ALL, null));
 
             Outputs returnVal = new Outputs();
-            returnVal.asyncJobIds = jobIds;
+            returnVal.asyncJobIds = new List<ID>{jobId};
             outputs.add(returnVal);
         }
         return outputs;
@@ -393,45 +377,10 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             // handle compound fields
             return JSON.serialize(fieldValue).escapeCsv();
         } else if (fieldType == Schema.DisplayType.DATE || fieldType == Schema.DisplayType.DATETIME) {
-            return formatDateTime((String)fieldValue);
+            return String.valueOf(fieldValue).escapeCsv(); // Maybe some date formatting here
         } else {
             return String.valueOf(fieldValue).replaceAll('\r\n|\n|\r|\t',' ').escapeCsv();
         }
     }
 
-    private static String formatDateTime(String fieldValue) {
-        // Datetime is already formatted
-        if (fieldValue.contains('t') && fieldValue.contains('z') && fieldValue.indexOf('t') == 11) {
-            return fieldValue;
-        }
-        Map<String, String> localMonthNumbers = getLocalMonthNumbers();
-        Boolean isDate = false;
-        for (String monthName : localMonthNumbers.keySet()) {
-            if (fieldValue.contains(monthName)) {
-                fieldValue = fieldValue.replaceAll(monthName, localMonthNumbers.get(monthName) + ',');
-                isDate = true;
-            }
-        }
-        if (isDate) {
-            fieldValue = fieldValue.replaceAll(', ', '/');
-            fieldValue = fieldValue.replaceAll('/ ', '/');
-            fieldValue += ', 12:00 AM';
-        }
-        return Datetime.parse(fieldValue).format('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'');
-    }
-
-    //Workaround to get local month name to month number map
-    private static Map<String, String> getLocalMonthNumbers() {
-        Datetime dt = Datetime.newInstance(2020, 1, 1);
-        Map<String, String> resultMap = new Map<String, String>();
-        for (Integer i = 1; i < 12; i++) {
-            String num = String.valueOf(i);
-            if (num.length() == 1) {
-                num = '0' + num;
-            }
-            resultMap.put(dt.format('MMMM').toLowerCase(), num);
-            dt = dt.addMonths(1);
-        }
-        return resultMap;
-    }
 }
