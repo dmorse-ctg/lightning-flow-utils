@@ -1,7 +1,7 @@
 global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     class GenerateCSVException extends Exception {}
     
-    private static Integer SYNC_ITERATION_LIMIT = 200000;
+    private static Integer SYNC_ITERATION_LIMIT = 20000;
     private static String DOC_START_CONTENT = '\n';
 
     private List<SObject> objectList;
@@ -131,8 +131,10 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
 
             List<List<SObject>> sObjectLists = new List<List<SObject>>{};
             List<ID> jobIds = new List<ID>{};
-            Integer numJobs = Math.max((input.sObjectCollection[0].getPopulatedFieldsAsMap().keySet().size()*input.sObjectCollection.size()) / SYNC_ITERATION_LIMIT, 1);
-            System.debug('Num jobs: ' + numJobs);
+            Set<String> populatedFields = input.sObjectCollection[0].getPopulatedFieldsAsMap().keySet();
+            System.debug('Logs: Populated fields count: ' + populatedFields.size());
+            Integer numJobs = Math.max(Math.round(Decimal.valueOf(populatedFields.size()*input.sObjectCollection.size()) / SYNC_ITERATION_LIMIT), 1);
+            System.debug('Logs: Num jobs: ' + numJobs);
             // Split the list across async jobs
             if (numJobs > 1) {
             	for (Integer i = 0; i < numJobs - 1; i++) {
@@ -147,13 +149,11 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                         sObjectLists[0].add(input.sObjectCollection.remove(0));
                     }
                 }
-                ConvertRecordsToCSVQueueable prev = new ConvertRecordsToCSVQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ALL, null);
-                jobIds.add(System.enqueueJob(prev));
+                ConvertRecordsToCSVQueueable prev;
                 for (List<SObject> sList: sObjectLists) {
                     prev = new ConvertRecordsToCSVQueueable(sList, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ROWS_ONLY, prev);
-                    jobIds.add(System.enqueueJob(prev));
                 }
-                System.debug('All jobs queued');
+                jobIds.add(System.enqueueJob(new ConvertRecordsToCSVQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ALL, prev)));
             } else {
                 jobIds.add(System.enqueueJob(new ConvertRecordsToCSVQueueable(input.sObjectCollection, fieldsList, initialDoc.contentDocumentLinks, initialDoc.contentVersionId, initialDoc.contentDocumentId, CSVParseType.ALL, null)));
             }
