@@ -8,7 +8,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     private List<String> fieldsList;
     private String contentDocumentId;
     private String contentVersionId;
-    private List<ContentDocumentLink> contentDocumentLinks;
+    private List<ID> contentDocumentLinks;
     private CSVParseType parseType;
     private ConvertRecordsToCSVQueueable nextQueueable;
     
@@ -55,13 +55,13 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         global String contentVersionId;
     
         @InvocableVariable(description='If you provided linked record Ids, this will returned the related ContentDocumentLinks for each')
-        global List<ContentDocumentLink> contentDocumentLinks;
+        global List<ID> contentDocumentLinks;
 
         @InvocableVariable(description='Id of the asynchronous job queued (AsyncApexJob). If the action was executed asynchronously all other return values will be null. Use this to query for status of the job.')
         global List<ID> asyncJobIds;
     }
 
-    global ConvertRecordsToCSVQueueable(List<SObject> objectList, List<String> fieldsList, List<ContentDocumentLink> contentDocumentLinks, String contentVersionId, String contentDocumentId, CSVParseType parseType, ConvertRecordsToCSVQueueable nextQueueable) {
+    global ConvertRecordsToCSVQueueable(List<SObject> objectList, List<String> fieldsList, List<ID> contentDocumentLinks, String contentVersionId, String contentDocumentId, CSVParseType parseType, ConvertRecordsToCSVQueueable nextQueueable) {
         this.objectList = objectList;
         this.fieldsList = fieldsList;
         this.contentDocumentId = contentDocumentId;
@@ -78,9 +78,9 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         } else {
             // Generate platform event
             // CSV_Document__e documentCompleteEvent = new CSV_Document__e();
-            // documentCompleteEvent.ContentDocumentId = this.contentDocumentId;
-            // documentCompleteEvent.ContentDocumentLinks = this.contentDocumentLinks;
-            // documentCompleteEvent.ContentVersionId = newVersion;
+            // documentCompleteEvent.ContentDocumentId_c = this.contentDocumentId;
+            // documentCompleteEvent.ContentDocumentLinks_c = String.join(this.contentDocumentLinks, ',');
+            // documentCompleteEvent.ContentVersionId_c = newVersion;
     
             // List<Database.SaveResult> results = EventBus.publish(new List<CSV_Document__e>{documentCompleteEvent});
             // for (Database.SaveResult result: results) {
@@ -330,7 +330,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     }
 
     global static ConvertRecordsToCSVQueueable.Outputs generateDocument(List<String> linkedRecordIds, String documentTitle, String documentShareType, String documentVisibility, String content) {
-        List<ContentDocumentLink> links = new List<ContentDocumentLink> {};
+        List<ID> links = new List<ID> {};
         
         ContentVersion cv = new ContentVersion();
         cv.VersionData = Blob.valueOf(content);
@@ -345,6 +345,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             throw new GenerateCSVException('Document failed to generate for CSV content.');
         }
         if (linkedRecordIds != null) {
+            List<ContentDocumentLink> linkRecords = new List<ContentDocumentLink>{};
             for (String recordId: linkedRecordIds) {
                 ContentDocumentLink cdl = new ContentDocumentLink();
                 cdl.ContentDocumentId = doc[0].Id;
@@ -359,9 +360,10 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 } else {
                     cdl.Visibility = 'V';
                 }
-                links.add(cdl);
+                links.add(cdl.Id);
+                linkRecords.add(cdl);
             }
-            insert links;
+            insert linkRecords;
         }
 
         ConvertRecordsToCSVQueueable.Outputs returnVal = new ConvertRecordsToCSVQueueable.Outputs();
