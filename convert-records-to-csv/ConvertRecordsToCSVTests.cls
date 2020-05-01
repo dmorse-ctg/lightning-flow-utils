@@ -4,7 +4,7 @@ private class ConvertRecordsToCSVTests {
     private static void testGenerateCSVContent() {
         List <SObject> objects = new List<SObject>{new Account(Name='Test1', AccountNumber='3445556676'), new Account(Name='Test2', BillingCity='Richmond'), new Account(Name='Test3')};
         Test.startTest();
-        String fullCSV = ConvertRecordsToCSV.generateCSVContent(objects, null);
+        String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(objects, null);
         Test.stopTest();
         List<String> rows = fullCSV.split('\n');
         System.assertEquals(4, rows.size());
@@ -32,7 +32,7 @@ private class ConvertRecordsToCSVTests {
         List<Contact> contacts = [Select FirstName, LastName, Email, Related_Contact__r.LastName from Contact];
 
         Test.startTest();
-        String fullCSV = ConvertRecordsToCSV.generateCSVContent(contacts, new List<String>{'LastName','Email','Related_Contact__r.LastName'});
+        String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'LastName','Email','Related_Contact__r.LastName'});
         Test.stopTest();
         List<String> rows = fullCSV.split('\n');
         System.assertEquals(4, rows.size());
@@ -63,7 +63,7 @@ private class ConvertRecordsToCSVTests {
         insert account;
 
         Test.startTest();
-        ConvertRecordsToCSV.Outputs result = ConvertRecordsToCSV.generateDocument(new List<String>{account.Id}, 'MyDoc', 'V', 'ALlUsers', csvContent);
+        ConvertRecordsToCSVQueueable.Outputs result = ConvertRecordsToCSVQueueable.generateDocument(new List<String>{account.Id}, 'MyDoc', 'V', 'ALlUsers', csvContent);
         Test.stopTest();
 
         System.assert(result.contentDocumentId != null);
@@ -77,7 +77,7 @@ private class ConvertRecordsToCSVTests {
         String csvContent = 'this, this, this, this, this \n';
     
         Test.startTest();
-        ConvertRecordsToCSV.Outputs result = ConvertRecordsToCSV.generateDocument(null, 'MyDoc', 'V', 'AllUsers', csvContent);
+        ConvertRecordsToCSVQueueable.Outputs result = ConvertRecordsToCSVQueueable.generateDocument(null, 'MyDoc', 'V', 'AllUsers', csvContent);
         Test.stopTest();
 
         System.assert(result.contentDocumentId != null);

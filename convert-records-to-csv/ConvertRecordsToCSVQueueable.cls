@@ -1,8 +1,8 @@
-global class ConvertRecordsToCSVQueueable implements Queueable {
+global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     class GenerateCSVException extends Exception {}
     
     private static Integer SYNC_ITERATION_LIMIT = 200000;
-    private static String DOC_START_CONTENT = 'DOC_START_CONTENT';
+    private static String DOC_START_CONTENT = '\n';
 
     private List<SObject> objectList;
     private List<String> fieldsList;
@@ -73,7 +73,6 @@ global class ConvertRecordsToCSVQueueable implements Queueable {
 
     global void execute(QueueableContext context) { 
         String newVersion = ConvertRecordsToCSVQueueable.updateDocument(ConvertRecordsToCSVQueueable.generateCSVContent(objectList, fieldsList, parseType, true), contentDocumentId);
-        this.objectList = null;
         if (nextQueueable != null) {
             System.enqueueJob(nextQueueable);
         }
@@ -307,7 +306,6 @@ global class ConvertRecordsToCSVQueueable implements Queueable {
                             String comp = fieldComponents[i];    
                             if (i < fieldComponents.size() - 1) {
                                 traverse = traverse.getSObject(comp);
-                                System.debug('Related object: ' + traverse);
                             } else if (traverse != null) {
                                 // get field value for the last field component
                                 Object fieldValue = traverse.get(comp);
@@ -325,9 +323,8 @@ global class ConvertRecordsToCSVQueueable implements Queueable {
                     }
                     columnRow += ',';
                 }
-    
                 columnRow = columnRow.removeEnd(',');
-                columnRows.add(columnRow);  
+                columnRows.add(columnRow);
             }
             columnRowsCSV = String.join(columnRows, '\n') + '\n';
         }
