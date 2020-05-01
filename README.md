@@ -25,7 +25,7 @@ _Optional:_
 - Document Sharing
 - Linked record ids for document
 - Custom CSV columns names (sObject primary + related fields)
-- Execute asynchronously
+- Asynchronous identifier
 
 
 ### Outputs
