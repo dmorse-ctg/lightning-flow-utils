@@ -12,10 +12,10 @@ This action takes a list of sObject records, generates a CSV report and uploads 
 Required:
 - sObject List
 - Document Title
-- Document Visibility
-- Document Sharing
 
 _Optional:_
+- Document Visibility
+- Document Sharing
 - Linked record ids for document
 - Custom CSV columns names (sObject primary + related fields)
 - Execute asynchronously
