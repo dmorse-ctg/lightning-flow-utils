@@ -20,10 +20,10 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     }
 
     global class Inputs {
-        @InvocableVariable(description='List of sObject records to print in report' required=true)
+        @InvocableVariable(description='List of records to print in report' required=true)
         global List<SObject> sObjectCollection;
     
-        @InvocableVariable(description='Title of the report' required=true)
+        @InvocableVariable(description='File name for report' required=true)
         global String documentTitle;
 
         @InvocableVariable(description='Sharing permissions for the file. Valid values: "V" (viewer), "C" (collaborator), "I" (inferred); Default value: "V"')
@@ -32,19 +32,19 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         @InvocableVariable(description='Specifies whether the document is available to all users, internal users, or shared users. Valid values: "AllUsers", "InternalUsers", "SharedUsers"; Default value: "AllUsers"')
         global String documentVisibility;
     
-        @InvocableVariable(description='Optional list of recordIds to link generated document to')
+        @InvocableVariable(description='Optional list of record Ids to link generated file to')
         global List<String> linkedRecordIds;
 
-        @InvocableVariable(description='Optional comma-separated string of recordIds to link generated document to')
+        @InvocableVariable(description='Optional comma-separated string of record Ids to link generated file to')
         global String linkedRecordIdsString;
 
-        @InvocableVariable(description='Optional: Explicit collection of fields to report on CSV. If null, all populated fields on the sObject will be displayed. NOTE: If you need to print related fields this parameter is required.')
+        @InvocableVariable(description='Optional: Explicit collection of fields (column names) to report. If null, all populated fields on the records will be displayed. NOTE: If you need to print related fields this parameter is required.')
         global List<String> fieldsCollection;
 
-        @InvocableVariable(description='Optional: Explicit comma-separated string of fields to report on CSV. If null, all populated fields on the sObject will be displayed. NOTE: If you need to print related fields this parameter is required.')
+        @InvocableVariable(description='Optional: Explicit comma-separated string of fields (column names) to report. If null, all populated fields on the records will be displayed. NOTE: If you need to print related fields this parameter is required.')
         global String fieldsString;
 
-        @InvocableVariable(description='If provided, the action will execute asynchrounously and return values will be posted to a platform event: CSV_Document__e. Use this identifier to listen for the platform event')
+        @InvocableVariable(description='If set, the action will execute asynchrounously and file information will be posted to a platform event: CSV_Document__e. Use this identifier to listen for the platform event')
         global String executeAsyncIdentifier;
     }
 
