@@ -9,7 +9,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     private List<String> fieldsList;
     private String contentDocumentId;
     private String contentVersionId;
-    private List<ID> contentDocumentLinks;
+    private List<ContentDocumentLink> contentDocumentLinks;
     private CSVParseType parseType;
     private ConvertRecordsToCSVQueueable nextQueueable;
     
@@ -56,7 +56,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         global String contentVersionId;
     
         @InvocableVariable(description='If you provided linked record Ids, this will returned the related ContentDocumentLinks for each')
-        global List<ID> contentDocumentLinks;
+        global List<ContentDocumentLink> contentDocumentLinks;
 
         @InvocableVariable(description='Id of the asynchronous job queued (AsyncApexJob). If the action was executed asynchronously all other return values will be null. Use this to query for status of the job.')
         global List<ID> asyncJobIds;
@@ -318,9 +318,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         return columnHeadersCSV + columnRowsCSV;
     }
 
-    global static ConvertRecordsToCSVQueueable.Outputs generateDocument(List<String> linkedRecordIds, String documentTitle, String documentShareType, String documentVisibility, String content) {
-        List<ID> links = new List<ID> {};
-        
+    global static ConvertRecordsToCSVQueueable.Outputs generateDocument(List<String> linkedRecordIds, String documentTitle, String documentShareType, String documentVisibility, String content) {        
         ContentVersion cv = new ContentVersion();
         cv.VersionData = Blob.valueOf(content);
         cv.Title = documentTitle;
@@ -342,14 +340,13 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 if (documentShareType != null) {
                     cdl.ShareType = documentShareType;
                 } else {
-                    cdl.ShareType = 'AllUsers';
+                    cdl.ShareType = 'V';
                 }
                 if (documentVisibility != null) {
                     cdl.Visibility = documentVisibility;
                 } else {
-                    cdl.Visibility = 'V';
+                    cdl.Visibility = 'AllUsers';
                 }
-                links.add(cdl.Id);
                 linkRecords.add(cdl);
             }
             insert linkRecords;
@@ -358,7 +355,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         ConvertRecordsToCSVQueueable.Outputs returnVal = new ConvertRecordsToCSVQueueable.Outputs();
         returnVal.contentDocumentId=doc[0].Id;
         returnVal.contentVersionId=cv.Id;
-        returnVal.contentDocumentLinks=links;
+        returnVal.contentDocumentLinks=linkRecords;
         return returnVal;
     }
     
