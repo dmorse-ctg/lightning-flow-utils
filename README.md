@@ -31,5 +31,5 @@ _Optional:_
 ### Outputs
 If the action is executed asynchronously (indicated via parameter), then the job id(s) for the execution are returned imediately and document information is published via platform event. Otherwise CSV document information is returned immediately. 
 
-Go to [x: TODO] to read more or to download and install the package. 
+Go to [UnofficialSF](https://unofficialsf.com) to read more or to download and install the package. 
 
