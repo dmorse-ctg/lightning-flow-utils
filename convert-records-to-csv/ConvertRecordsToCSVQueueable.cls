@@ -29,6 +29,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     private List<String> fieldsList;
     private String contentDocumentId;
     private String contentVersionId;
+    private List<ContentDocumentLink> contentDocumentLinks;
     private CSVParseType parseType;
     private ConvertRecordsToCSVQueueable nextQueueable;
     
@@ -73,6 +74,9 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     
         @InvocableVariable(description='Id for ContentVersion generated')
         global String contentVersionId;
+    
+        @InvocableVariable(description='If you provided linked record Ids, this will returned the related ContentDocumentLinks for each')
+        global List<ContentDocumentLink> contentDocumentLinks;
 
         @InvocableVariable(description='Id of the asynchronous job queued (AsyncApexJob). If the action was executed asynchronously all other return values will be null. Use this to query for status of the job.')
         global List<ID> asyncJobIds;
@@ -89,6 +93,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             Outputs returnVal = generateDocument(this.input.linkedRecordIds, this.input.documentTitle, this.input.documentShareType, this.input.documentVisibility, generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, true));
             contentVersion = returnVal.contentVersionId;
             this.contentDocumentId = returnVal.contentDocumentId;
+            this.contentDocumentLinks = returnVal.contentDocumentLinks;
         } else {
         	contentVersion = updateDocument(generateCSVContent(objectList, fieldsList, parseType, true), contentDocumentId);
         }
@@ -98,13 +103,15 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             // Generate platform event
 	    // Use this to get document information for jobs that were executed asyncronously from your flow.
 	    // NOTE: Before uncommenting these lines of code, create the `CSV_Export_Event__e` event in your salesforce environment. 
-	    // The platform event should have 3 fields:
+	    // The platform event should have 4 fields:
 	    //    1. ContentDocumentId__c
-	    //    2. ContentVersionId__c
-	    //    3. Unique_Identifier__c (A unique identifer to listen for the event in flow; this can be named whatever you like) 
+	    //    2. ContentDocumentLinks__c
+	    //    3. ContentVersionId__c
+	    //    4. Unique_Identifier__c (A unique identifer to listen for the event in flow; this can be named whatever you like) 
 	    // UNCOMMENT BELOW THIS LINE FOR PLATFORM EVENT SUPPORT
             // CSV_Export_Event__e documentCompleteEvent = new CSV_Export_Event__e();
             // documentCompleteEvent.ContentDocumentId__c = this.contentDocumentId;
+            // documentCompleteEvent.ContentDocumentLinks__c = String.join(this.contentDocumentLinks, ',');
             // documentCompleteEvent.ContentVersionId__c = newVersion;
     
             // List<Database.SaveResult> results = EventBus.publish(new List<CSV_Export_Event__e>{documentCompleteEvent});
@@ -377,6 +384,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         ConvertRecordsToCSVQueueable.Outputs returnVal = new ConvertRecordsToCSVQueueable.Outputs();
         returnVal.contentDocumentId=doc[0].Id;
         returnVal.contentVersionId=cv.Id;
+        returnVal.contentDocumentLinks=linkRecords;
         return returnVal;
     }
     
