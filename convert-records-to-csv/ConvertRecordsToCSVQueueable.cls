@@ -25,13 +25,6 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     private static String DOC_START_CONTENT = '\n';
 
     private Inputs input;
-    private List<SObject> objectList;
-    private List<String> fieldsList;
-    private String contentDocumentId;
-    private String contentVersionId;
-    private List<ContentDocumentLink> contentDocumentLinks;
-    private CSVParseType parseType;
-    private ConvertRecordsToCSVQueueable nextQueueable;
     
     global enum CSVParseType {
         HEADERS_ONLY,
@@ -88,38 +81,28 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     }
 
     global void execute(QueueableContext context) {
-        string contentVersion = '';
-        if (this.input != null) {
-            Outputs returnVal = generateDocument(this.input.linkedRecordIds, this.input.documentTitle, this.input.documentShareType, this.input.documentVisibility, generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, true));
-            contentVersion = returnVal.contentVersionId;
-            this.contentDocumentId = returnVal.contentDocumentId;
-            this.contentDocumentLinks = returnVal.contentDocumentLinks;
-        } else {
-        	contentVersion = updateDocument(generateCSVContent(objectList, fieldsList, parseType, true), contentDocumentId);
-        }
-        if (nextQueueable != null) {
-            System.enqueueJob(nextQueueable);
-        } else {
-            // Generate platform event
+        Outputs returnVal = generateDocument(this.input.linkedRecordIds, this.input.documentTitle, this.input.documentShareType, this.input.documentVisibility, generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, true));
+
+        // Generate platform event
 	    // Use this to get document information for jobs that were executed asyncronously from your flow.
 	    // NOTE: Before uncommenting these lines of code, create the `CSV_Export_Event__e` event in your salesforce environment. 
 	    // The platform event should have 3 fields:
 	    //    1. ContentDocumentId__c
 	    //    2. ContentVersionId__c
-	    //    3. Unique_Identifier__c (A unique identifer to listen for the event in flow; this can be named whatever you like) 
+	    //    3. Source_Unique_ID__c (A unique identifer to listen for the event in flow; this can be named whatever you like) 
 	    // UNCOMMENT BELOW THIS LINE FOR PLATFORM EVENT SUPPORT
-            // CSV_Export_Event__e documentCompleteEvent = new CSV_Export_Event__e();
-            // documentCompleteEvent.ContentDocumentId__c = this.contentDocumentId;
-            // documentCompleteEvent.ContentVersionId__c = newVersion;
-    
-            // List<Database.SaveResult> results = EventBus.publish(new List<CSV_Export_Event__e>{documentCompleteEvent});
-            // for (Database.SaveResult result: results) {
-            //     if (!result.isSuccess()) {
-            //         // potentially throw and error here?
-            //         System.debug('CSV document event publication failed.');
-            //     }
-            // }
-        }
+        // CSV_Export_Event__e documentCompleteEvent = new CSV_Export_Event__e();
+        // documentCompleteEvent.ContentDocumentId__c = returnVal.contentDocumentId;
+        // documentCompleteEvent.ContentVersionId__c = returnVal.contentVersionId;
+        // documentCompleteEvent.Source_Unique_ID__c = this.input.executeAsyncIdentifier;
+
+        // List<Database.SaveResult> results = EventBus.publish(new List<CSV_Export_Event__e>{documentCompleteEvent});
+        // for (Database.SaveResult result: results) {
+        //     if (!result.isSuccess()) {
+        //         // potentially throw and error here?
+        //         System.debug('CSV document event publication failed.');
+        //     }
+        // }
     }
     @InvocableMethod(label='Convert Records to CSV' description='Generates a CSV given a list of sObjects, uplooads it to Files, and optionally links it to a list of related records.' category='Reporting')
     global static List<ConvertRecordsToCSVQueueable.Outputs> generateCSV(List<ConvertRecordsToCSVQueueable.Inputs> inputVariables) {
