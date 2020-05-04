@@ -100,7 +100,15 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         if (nextQueueable != null) {
             System.enqueueJob(nextQueueable);
         } else {
-            //Generate platform event
+            // Generate platform event
+	    // Use this to get document information for jobs that were executed asyncronously from your flow.
+	    // NOTE: Before uncommenting these lines of code, create the `CSV_Export_Event__e` event in your salesforce environment. 
+	    // The platform event should have 4 fields:
+	    //    1. ContentDocumentId__c
+	    //    2. ContentDocumentLinks__c
+	    //    3. ContentVersionId__c
+	    //    4. Unique_Identifier__c (A unique identifer to listen for the event in flow; this can be named whatever you like) 
+	    // UNCOMMENT BELOW THIS LINE FOR PLATFORM EVENT SUPPORT
             // CSV_Export_Event__e documentCompleteEvent = new CSV_Export_Event__e();
             // documentCompleteEvent.ContentDocumentId__c = this.contentDocumentId;
             // documentCompleteEvent.ContentDocumentLinks__c = String.join(this.contentDocumentLinks, ',');

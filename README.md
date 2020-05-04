@@ -17,7 +17,7 @@ This action takes a list of sObject records, generates a CSV report and uploads 
 
 ### Inputs
 Required:
-- sObject Collection
+- Record (sObject) Collection
 - Document Title
 
 _Optional:_
@@ -31,5 +31,5 @@ _Optional:_
 ### Outputs
 If the action is executed asynchronously (indicated via parameter), then the job id(s) for the execution are returned imediately and document information is published via platform event. Otherwise CSV document information is returned immediately. 
 
-Go to [x: TODO] to read more or to download and install the package. 
+Go to [UnofficialSF](https://unofficialsf.com) to read more or to download and install the package. 
 
