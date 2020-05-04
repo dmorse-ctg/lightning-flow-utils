@@ -331,8 +331,9 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         if (doc.size() == 0) {
             throw new GenerateCSVException('Document failed to generate for CSV content.');
         }
+        
+        List<ContentDocumentLink> linkRecords = new List<ContentDocumentLink>{};
         if (linkedRecordIds != null) {
-            List<ContentDocumentLink> linkRecords = new List<ContentDocumentLink>{};
             for (String recordId: linkedRecordIds) {
                 ContentDocumentLink cdl = new ContentDocumentLink();
                 cdl.ContentDocumentId = doc[0].Id;
