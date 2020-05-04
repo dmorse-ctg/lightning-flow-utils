@@ -21,7 +21,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
 
     global class Inputs {
         @InvocableVariable(description='List of records to print in report' required=true)
-        global List<SObject> sObjectCollection;
+        global List<SObject> recordCollection;
     
         @InvocableVariable(description='File name for report' required=true)
         global String documentTitle;
@@ -70,7 +70,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     global void execute(QueueableContext context) {
         string contentVersion = '';
         if (this.input != null) {
-            Outputs returnVal = generateDocument(this.input.linkedRecordIds, this.input.documentTitle, this.input.documentShareType, this.input.documentVisibility, generateCSVContent(input.sObjectCollection, input.fieldsCollection, CSVParseType.ALL, true));
+            Outputs returnVal = generateDocument(this.input.linkedRecordIds, this.input.documentTitle, this.input.documentShareType, this.input.documentVisibility, generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, true));
             contentVersion = returnVal.contentVersionId;
             this.contentDocumentId = returnVal.contentDocumentId;
             this.contentDocumentLinks = returnVal.contentDocumentLinks;
@@ -109,7 +109,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
 
         List<ConvertRecordsToCSVQueueable.Outputs> outputs = new List<ConvertRecordsToCSVQueueable.Outputs>{};
         for (Inputs input: inputVariables) {
-            if (input.sObjectCollection == null || input.sObjectCollection.size() == 0) {
+            if (input.recordCollection == null || input.recordCollection.size() == 0) {
                 // Nothing to do here
                 return new List<Outputs>{};
             }
@@ -131,12 +131,12 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             }
     
             Boolean executeAsync = input.executeAsyncIdentifier != null;
-            if (!executeAsync && fieldsList != null && fieldsList.size()*input.sObjectCollection.size() > SYNC_ITERATION_LIMIT) {
+            if (!executeAsync && fieldsList != null && fieldsList.size()*input.recordCollection.size() > SYNC_ITERATION_LIMIT) {
                 throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
             }
     
             if (!executeAsync) {
-                String fullCSV = generateCSVContent(input.sObjectCollection, fieldsList, CSVParseType.ALL, executeAsync);
+                String fullCSV = generateCSVContent(input.recordCollection, fieldsList, CSVParseType.ALL, executeAsync);
                 ConvertRecordsToCSVQueueable.Outputs returnVal = generateDocument(input.linkedRecordIds, input.documentTitle, input.documentShareType, input.documentVisibility, fullCSV);
                 return new List<ConvertRecordsToCSVQueueable.Outputs>{returnVal};
             }
