@@ -1,22 +1,15 @@
-// Copyright (c) 2020 CapTech Consulting
-
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+/**
+ * Copyright (c) 2020 CapTech Consulting
+ * @File Name          : ConvertRecordsToCSVQueueable.cls
+ * @Description        : Converts a list of records to CSV and uploaded to Files
+ * @Author             : Ragan Walker
+ * @Last Modified By   : araganwalker@gmail.com
+ * @Last Modified On   : 05/05/2020
+ * @License            : LICENSE: https://github.com/captechconsulting/lightning-flow-utils/blob/master/LICENSE 
+ * @Modification Log   : 
+ * Ver      Date            Author      		        Modification
+ * 1.0      05/05/2020      araganwalker@gmail.com      Initial release
+**/
 
 global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     class GenerateCSVException extends Exception {}
