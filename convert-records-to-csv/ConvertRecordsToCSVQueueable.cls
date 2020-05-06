@@ -116,35 +116,31 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 return new List<Outputs>{};
             }
             
-            List<String> fieldsList = input.fieldsCollection;
             if (input.fieldsString != null) {
-                fieldsList = input.fieldsString.split(',');
-                if (fieldsList.size() == 0) {
+                input.fieldsCollection = input.fieldsString.split(',');
+                if (input.fieldsCollection.size() == 0) {
                     throw new GenerateCSVException('Invalid list of primary fields provided. The string is not comma separated.');
                 }
             }
     
-            List<String> linkedRecordIds = input.linkedRecordIds;
             if (input.linkedRecordIdsString != null) {
-                linkedRecordIds = input.linkedRecordIdsString.split(',');
-                if (linkedRecordIds.size() == 0) {
+                input.linkedRecordIds = input.linkedRecordIdsString.split(',');
+                if (input.linkedRecordIds.size() == 0) {
                     throw new GenerateCSVException('Invalid list of linked record ids provided. The string is not comma separated.');
                 }
             }
     
             Boolean executeAsync = input.executeAsyncIdentifier != null;
-            if (!executeAsync && fieldsList != null && fieldsList.size()*input.recordCollection.size() > SYNC_ITERATION_LIMIT) {
+            if (!executeAsync && input.fieldsCollection != null && input.fieldsCollection.size()*input.recordCollection.size() > SYNC_ITERATION_LIMIT) {
                 throw new GenerateCSVException('The batch size you have provided is too large to execute synchronously. Please reduce the number of columns or rows or run execute this action asynchronously.');
             }
     
             if (!executeAsync) {
-                String fullCSV = generateCSVContent(input.recordCollection, fieldsList, CSVParseType.ALL, executeAsync);
+                String fullCSV = generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, executeAsync);
                 ConvertRecordsToCSVQueueable.Outputs returnVal = generateDocument(input.linkedRecordIds, input.documentTitle, input.documentShareType, input.documentVisibility, fullCSV);
                 return new List<ConvertRecordsToCSVQueueable.Outputs>{returnVal};
             }
             
-            input.fieldsCollection = fieldsList;
-            input.linkedRecordIds = linkedRecordIds;
             ID jobId = System.enqueueJob(new ConvertRecordsToCSVQueueable(input));
 
             Outputs returnVal = new Outputs();
