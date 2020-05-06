@@ -254,13 +254,13 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
 
         for (SObject so: objectList) {
             Map<String,Schema.SObjectField> allFields = so.getSObjectType().getDescribe().fields.getMap();
-            Map<String, Object> populatedFields = so.getPopulatedFieldsAsMap();
+            Map<String, Object> populatedFieldsKeys = so.getPopulatedFieldsAsMap().keySet();
 
             if (fieldList == null) {
                 // If no primary fields are provided, add all populated fields, removing any that aren't in the all fields list
                 Set<String> populatedFieldNames = new Set<String>{};
                 Set<String> allFieldsKeySet = allFields.keySet();
-                for (String field: populatedFields.keySet()) {
+                for (String field: populatedFieldsKeys) {
                     if (allFieldsKeySet.contains(field.toLowerCase())) { // retainAll on the set does not work because causes do not match
                         populatedFieldNames.add(field);
                     }
@@ -280,15 +280,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             if (parseType == CSVParseType.ROWS_ONLY || parseType == CSVParseType.ALL) {
                 String rowElement = '';
                 for (String header: columnHeaders) {
-                    if (populatedFields.get(header) != null) {
-                        Schema.SObjectField field = allFields.get(header);
-                        if (field != null && (field.getDescribe().getType() == Schema.DisplayType.ADDRESS || field.getDescribe().getType() == Schema.DisplayType.LOCATION)) {
-                            // handle compound fields like address and location
-                            rowElement += JSON.serialize(populatedFields.get(header)).escapeCsv();
-                        } else {
-                            rowElement += String.valueOf(populatedFields.get(header)).replaceAll('\r\n|\n|\r',' ').escapeCsv();
-                        }
-                    } else if (header.contains('.')) { // 3. Handle Related Fields
+                    if (header.contains('.')) { // 3. Handle Related Fields
                         // pull related fields and add data
                         List<String> fieldComponents = header.split('\\.');
                         SObject traverse = so;
@@ -307,6 +299,15 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                             } else {
                                 rowElement += 'null';
                             }
+                        }
+                    } else if (so.get(header) != null) {
+                        Object value = so.get(header);
+                        Schema.SObjectField field = allFields.get(header);
+                        if (field != null && (field.getDescribe().getType() == Schema.DisplayType.ADDRESS || field.getDescribe().getType() == Schema.DisplayType.LOCATION)) {
+                            // handle compound fields like address and location
+                            rowElement += JSON.serialize(value).escapeCsv();
+                        } else {
+                            rowElement += String.valueOf(value).replaceAll('\r\n|\n|\r',' ').escapeCsv();
                         }
                     } else {
                         rowElement += 'null';
