@@ -17,7 +17,7 @@ private class ConvertRecordsToCSVQueueableTests {
     }
 
     @isTest
-    private static void testGenerateCSVContentRelatedFields() {
+    private static void testGenerateCSVContentListedFields() {
         Account account1 = new Account(Name='Test1', AccountNumber='3445556676');
         insert account1;
 
@@ -32,7 +32,9 @@ private class ConvertRecordsToCSVQueueableTests {
         List<Contact> contacts = [Select FirstName, LastName, Email, Related_Contact__r.LastName from Contact];
 
         Test.startTest();
+        // Test Synchronously
         String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'LastName','Email','Related_Contact__r.LastName'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
+        String csv_CaseSensitive = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'lastName','email','Related_Contact__r.LastName'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
         Test.stopTest();
         List<String> rows = fullCSV.split('\n');
         System.assertEquals(4, rows.size());
@@ -43,6 +45,10 @@ private class ConvertRecordsToCSVQueueableTests {
         System.assertEquals('Test1,null,null', rows[1]);
         System.assertEquals('Test2,abc@gmail.com,Test1', rows[2]);
         System.assertEquals('Test3,abc@gmail.com,null', rows[3]);
+        
+        List<String> rows2 = csv_CaseSensitive.split('\n');
+        System.assertEquals('lastName,email,Related_Contact__r.LastName', rows2[0]);
+        System.assertEquals('Test2,abc@gmail.com,Test1', rows2[2]);
     }
 
     @isTest
@@ -56,7 +62,7 @@ private class ConvertRecordsToCSVQueueableTests {
         insert new List<Contact>{contact1, contact2, contact3};
         update contact2;
 
-        List<AggregateResult> contacts = [Select LastName from Contact GROUP BY LastName];
+        List<AggregateResult> contacts = [Select LastName name from Contact GROUP BY LastName];
         
         Test.startTest();
         String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'name'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
@@ -71,9 +77,42 @@ private class ConvertRecordsToCSVQueueableTests {
           
         List<String> rows2 = unnamed.split('\n');
        	System.assertEquals(3, rows2.size(), 'Full text: ' + unnamed);
-        System.assertEquals('LastName', rows[0]);
+        System.assertEquals('name', rows[0]);
         System.assertEquals('Test', rows2[1]);
         System.assertEquals('Test2', rows2[2]);
+    }
+    
+    @isTest
+    private static void TestFullAction() {
+        Account account1 = new Account(Name='Test1', AccountNumber='3445556676');
+        insert account1;
+
+        Contact contact1 = new Contact(LastName='Test1');
+        Contact contact2 = new Contact(LastName='Test2', Email='abc@gmail.com');
+        Contact contact3 = new Contact(LastName='Test3', Email='abc@gmail.com', FirstName='Jonny');
+        insert new List<Contact>{contact1, contact2, contact3};
+
+        contact2.Related_Contact__c = contact1.Id;
+        update contact2;
+
+        List<Contact> contacts = [Select FirstName, LastName, Email, Related_Contact__r.LastName from Contact];
+        
+        ConvertRecordsToCSVQueueable.Inputs input = new ConvertRecordsToCSVQueueable.Inputs();
+        input.recordCollection = contacts;
+        input.documentTitle = 'Test';
+        
+        // Test Synchronously
+        ConvertRecordsToCSVQueueable.Outputs syncOutput = ConvertRecordsToCSVQueueable.generateCSV(new List<ConvertRecordsToCSVQueueable.Inputs>{input})[0];
+        System.assert(syncOutput.contentDocumentId != null);
+        System.assert(syncOutput.contentVersionId != null);
+        System.assert(syncOutput.contentDocumentLinks.size() == 0);
+        
+        input.executeAsyncIdentifier = 'uniqueID';
+        ConvertRecordsToCSVQueueable.Outputs asyncOutput = ConvertRecordsToCSVQueueable.generateCSV(new List<ConvertRecordsToCSVQueueable.Inputs>{input})[0];
+        System.assert(asyncOutput.contentDocumentId == null);
+        System.assert(asyncOutput.contentVersionId == null);
+        System.assert(asyncOutput.contentDocumentLinks == null);
+        System.assertEquals(1, asyncOutput.asyncJobIds.size());
     }
 
     @isTest
