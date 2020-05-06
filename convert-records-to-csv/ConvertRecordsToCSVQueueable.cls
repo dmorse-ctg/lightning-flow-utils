@@ -123,7 +123,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 }
             }
     
-            if (input.linkedRecordIdsString != null && input.fieldsString.length() > 0) {
+            if (input.linkedRecordIdsString != null && input.linkedRecordIdsString.length() > 0) {
                 input.linkedRecordIds = input.linkedRecordIdsString.replace(' ', '').split(',');
                 if (input.linkedRecordIds.size() == 0) {
                     throw new GenerateCSVException('Invalid list of linked record ids provided. The string is not comma separated.');
