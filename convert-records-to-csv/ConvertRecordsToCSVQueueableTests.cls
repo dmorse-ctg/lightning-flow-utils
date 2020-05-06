@@ -18,10 +18,7 @@ private class ConvertRecordsToCSVQueueableTests {
 
     @isTest
     private static void testGenerateCSVContentListedFields() {
-        Account account1 = new Account(Name='Test1', AccountNumber='3445556676');
-        insert account1;
-
-        Contact contact1 = new Contact(LastName='Test1');
+		Contact contact1 = new Contact(LastName='Test1');
         Contact contact2 = new Contact(LastName='Test2', Email='abc@gmail.com');
         Contact contact3 = new Contact(LastName='Test3', Email='abc@gmail.com', FirstName='Jonny');
         insert new List<Contact>{contact1, contact2, contact3};
@@ -32,7 +29,7 @@ private class ConvertRecordsToCSVQueueableTests {
         List<Contact> contacts = [Select FirstName, LastName, Email, Related_Contact__r.LastName from Contact];
 
         Test.startTest();
-        // Test Synchronously
+        String allFields = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
         String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'LastName','Email','Related_Contact__r.LastName'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
         String csv_CaseSensitive = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'lastName','email','Related_Contact__r.LastName'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
         Test.stopTest();
@@ -49,14 +46,14 @@ private class ConvertRecordsToCSVQueueableTests {
         List<String> rows2 = csv_CaseSensitive.split('\n');
         System.assertEquals('lastName,email,Related_Contact__r.LastName', rows2[0]);
         System.assertEquals('Test2,abc@gmail.com,Test1', rows2[2]);
+        
+        List<String> rows3 = allFields.split('\n');
+        System.assertEquals('LastName,Id,Email,Related_Contact__c,FirstName', rows3[0]);
     }
 
     @isTest
     private static void testGenerateCSVContentAggregateResult() {
-        Account account1 = new Account(Name='Test1', AccountNumber='3445556676');
-        insert account1;
-
-        Contact contact1 = new Contact(LastName='Test', FirstName='Sally');
+		Contact contact1 = new Contact(LastName='Test', FirstName='Sally');
         Contact contact2 = new Contact(LastName='Test', FirstName='Mary', Email='abc@gmail.com');
         Contact contact3 = new Contact(LastName='Test2', Email='abc@gmail.com', FirstName='Jonny');
         insert new List<Contact>{contact1, contact2, contact3};
@@ -84,10 +81,7 @@ private class ConvertRecordsToCSVQueueableTests {
     
     @isTest
     private static void TestFullAction() {
-        Account account1 = new Account(Name='Test1', AccountNumber='3445556676');
-        insert account1;
-
-        Contact contact1 = new Contact(LastName='Test1');
+		Contact contact1 = new Contact(LastName='Test1');
         Contact contact2 = new Contact(LastName='Test2', Email='abc@gmail.com');
         Contact contact3 = new Contact(LastName='Test3', Email='abc@gmail.com', FirstName='Jonny');
         insert new List<Contact>{contact1, contact2, contact3};
