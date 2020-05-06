@@ -88,12 +88,13 @@ private class ConvertRecordsToCSVQueueableTests {
         
         String aggrResult = ConvertRecordsToCSVQueueable.generateCSVContent(count, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
 
-        List<String> rows2 = aggrResult.split('\n');
-        List<String> headers = rows2[0].split(',');
-       	System.assertEquals(3, headers.size(), 'Full text: ' + headers);
-        System.assertEquals('attributes', headers[0]);
-        System.assertEquals('NumberOfAccounts', headers[1]);
-        System.assertEquals('Type', headers[2]);
+        List<String> rows = aggrResult.split('\n');
+        System.assertEquals(3, rows.size(), 'Full text: ' + aggrResult);
+        
+        List<String> headers = rows[0].split(',');
+       	System.assertEquals(2, headers.size(), 'Full text: ' + headers);
+        System.assertEquals('NumberOfAccounts', headers[0]);
+        System.assertEquals('Type', headers[1]);
     }
     
     @isTest

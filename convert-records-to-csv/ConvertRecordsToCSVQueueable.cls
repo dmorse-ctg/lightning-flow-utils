@@ -142,7 +142,6 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             }
             
             ID jobId = System.enqueueJob(new ConvertRecordsToCSVQueueable(input));
-
             Outputs returnVal = new Outputs();
             returnVal.asyncJobIds = new List<ID>{jobId};
             outputs.add(returnVal);
@@ -175,14 +174,14 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             }
             
             if (parseType == CSVParseType.ROWS_ONLY || parseType == CSVParseType.ALL) {
-                String rowElement = '';
                 for (AggregateResult result: (List<AggregateResult>)objectList) {
+                    String rowElement = '';
                     for (String header: columnHeaders) {
                         Object fieldValue = result.get(header);
                         if (fieldValue != null) {
-                            rowElement = String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').replace(',', '');
+                            rowElement += String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').replace(',', '');
                         } else {
-                            rowElement = 'null';
+                            rowElement += 'null';
                         }
                         rowElement += ',';
                     }
@@ -203,7 +202,9 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
 
             for (Map<String, Object> data: soFieldList) {
                 columnHeaders.addAll(data.keySet());
+                columnHeaders.remove('attributes');
             }
+            System.debug('Logs: headers: ' + columnHeaders);
 
             // Check limits
             if (!executingAsync && parseType != CSVParseType.HEADERS_ONLY && columnHeaders.size()*objectList.size() > SYNC_ITERATION_LIMIT) {
@@ -219,16 +220,20 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 for (Map<String, Object> data: soFieldList) {
                     String rowElement = '';
                     for (String header: columnHeaders) {
+                        System.debug('Logs: searching header: ' + header);
                         if (data.get(header) != null) {
-                            rowElement = String.valueOf(data.get(header)).replaceAll('\r\n|\n|\r',' ').replace(',', '');
+                            rowElement += String.valueOf(data.get(header)).replaceAll('\r\n|\n|\r',' ').replace(',', '');
                             // rowElement += getDisplayTextForFieldType(fieldValue, fieldType);
+                            System.debug('Logs: got value: ' + data.get(header));
+
                         } else {
-                            rowElement = 'null';
+                            System.debug('Logs: value null:');
+                            rowElement += 'null';
                         }
                         rowElement += ',';
                     }
                     rowElement = rowElement.removeEnd(',');
-                    rowElements.add(rowElement);
+                   	rowElements.add(rowElement);
                 }
                 rowElementsCSV = String.join(rowElements, '\n') + '\n';
             }
@@ -362,25 +367,6 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         returnVal.contentDocumentLinks=linkRecords;
         return returnVal;
     }
-    
-    global static String updateDocument(String content, String documentId) {
-        List<ContentVersion> latestDoc = [SELECT Id, VersionData, Title FROM ContentVersion WHERE ContentDocumentId = :documentId AND IsLatest = true LIMIT 1];
-        if (latestDoc.size() > 0) {
-        	ContentVersion cv = new ContentVersion();
-        	cv.VersionData = Blob.valueOf(latestDoc[0].VersionData.toString() + content);
-            cv.ContentDocumentId = documentId;
-        	cv.Title = latestDoc[0].Title;
-            cv.PathOnClient = cv.Title + '.csv';
-        	cv.IsMajorVersion = false;
-            
-            Database.SaveResult sr = Database.insert(cv, false);
-            for(Database.Error err : sr.getErrors()) {
-                throw new GenerateCSVException('Unable to update document with CSV content. Reason: ' + err.getMessage() + '. Fields that affected this error: ' + err.getFields());
-            }
-            return cv.Id;
-        }
-		throw new GenerateCSVException('Unable to update document because one does not exist for id: ' + documentId);
-    }
 
     private static String getDisplayTextForFieldType(Object fieldValue, Schema.DisplayType fieldType) {
         if (fieldType == Schema.DisplayType.ADDRESS || fieldType == Schema.DisplayType.LOCATION) {
@@ -392,5 +378,4 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             return String.valueOf(fieldValue).replaceAll('\r\n|\n|\r|\t',' ').escapeCsv();
         }
     }
-
 }
