@@ -254,13 +254,12 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
 
         for (SObject so: objectList) {
             Map<String,Schema.SObjectField> allFields = so.getSObjectType().getDescribe().fields.getMap();
-            Map<String, Object> populatedFieldsKeys = so.getPopulatedFieldsAsMap().keySet();
 
             if (fieldList == null) {
                 // If no primary fields are provided, add all populated fields, removing any that aren't in the all fields list
                 Set<String> populatedFieldNames = new Set<String>{};
                 Set<String> allFieldsKeySet = allFields.keySet();
-                for (String field: populatedFieldsKeys) {
+                for (String field: so.getPopulatedFieldsAsMap().keySet()) {
                     if (allFieldsKeySet.contains(field.toLowerCase())) { // retainAll on the set does not work because causes do not match
                         populatedFieldNames.add(field);
                     }
