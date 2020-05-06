@@ -79,8 +79,25 @@ private class ConvertRecordsToCSVQueueableTests {
         System.assertEquals('Test2', rows2[2]);
     }
     
+    @isTest 
+    private static void testAggregateResultCount() {
+        List <Account> objects = new List<Account>{new Account(Name='Test1', AccountNumber='3445556676', Type='Prospect'), new Account(Name='Test2', BillingCity='Richmond', Type='Prospect'), new Account(Name='Test3', Type='Other')};
+        insert objects;
+
+        List<AggregateResult> count = [SELECT count(Id) NumberOfAccounts, Type FROM Account WHERE Type != null Group by Type];
+        
+        String aggrResult = ConvertRecordsToCSVQueueable.generateCSVContent(count, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
+
+        List<String> rows2 = aggrResult.split('\n');
+        List<String> headers = rows2[0].split(',');
+       	System.assertEquals(3, headers.size(), 'Full text: ' + headers);
+        System.assertEquals('attributes', headers[0]);
+        System.assertEquals('NumberOfAccounts', headers[1]);
+        System.assertEquals('Type', headers[2]);
+    }
+    
     @isTest
-    private static void TestFullAction() {
+    private static void testFullAction() {
 		Contact contact1 = new Contact(LastName='Test1');
         Contact contact2 = new Contact(LastName='Test2', Email='abc@gmail.com');
         Contact contact3 = new Contact(LastName='Test3', Email='abc@gmail.com', FirstName='Jonny');
@@ -107,6 +124,23 @@ private class ConvertRecordsToCSVQueueableTests {
         System.assert(asyncOutput.contentVersionId == null);
         System.assert(asyncOutput.contentDocumentLinks == null);
         System.assertEquals(1, asyncOutput.asyncJobIds.size());
+    }
+    
+    @isTest
+    private static void testFullActionAggrResult() {
+       	List <Account> objects = new List<Account>{new Account(Name='Test1', AccountNumber='3445556676', Type='Prospect'), new Account(Name='Test2', BillingCity='Richmond', Type='Prospect'), new Account(Name='Test3', Type='Other')};
+        insert objects;
+
+        List<AggregateResult> count = [SELECT count(Id) NumberOfAccounts, Type FROM Account WHERE Type != null Group by Type];
+        ConvertRecordsToCSVQueueable.Inputs input = new ConvertRecordsToCSVQueueable.Inputs();
+        input.recordCollection = count;
+        input.documentTitle = 'Test';
+        
+        // Test Synchronously
+        ConvertRecordsToCSVQueueable.Outputs syncOutput = ConvertRecordsToCSVQueueable.generateCSV(new List<ConvertRecordsToCSVQueueable.Inputs>{input})[0];
+        System.assert(syncOutput.contentDocumentId != null);
+        System.assert(syncOutput.contentVersionId != null);
+        System.assert(syncOutput.contentDocumentLinks.size() == 0);
     }
 
     @isTest
