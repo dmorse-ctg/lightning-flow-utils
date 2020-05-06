@@ -40,7 +40,9 @@ _Optional:_
   - API Name(s): `linkedRecordIds`, `linkedRecordIdsString`
   - Type(s): Collection, Text (respectively)
 - Custom CSV column names
-  - Description: List of record fields names to print as columns in CSV. If null, all populated fields on the records will be displayed. IMPORTANT: If you want to include related fields from an SOQL query (Custom_Object__r.Custom__c) this parameter is required. If you used aliasing on for an aggregate query, alias names can be provided rather than the API names. 
+  - Description: List of record fields names to print as columns in CSV. If null, all populated fields on the records will be displayed. _IMPORTANT_: If you want to include related fields from an SOQL query (Custom_Object__r.Custom__c) this parameter is required. If you used aliasing on for an aggregate query, alias names can be provided rather than the API names. 
+  - API Name(s): `fieldsCollection`, `fieldsString`
+  - Type(s): Collection, Text (respectively)
 
 - Asynchronous identifier
   - Description: If provided, the action will execute asynchronously, and generated document information will be posted to a platform event: `CSV_Document__e`. Use this identifier to listen for the platform event in a 'Wait' element in Flow or use Summer 20's 'Invoke Flow from a Platform Event'. 
