@@ -116,15 +116,15 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 return new List<Outputs>{};
             }
             
-            if (input.fieldsString != null) {
-                input.fieldsCollection = input.fieldsString.split(',');
+            if (input.fieldsString != null && input.fieldsString.length() > 0) {
+                input.fieldsCollection = input.fieldsString.replace(' ', '').split(',');
                 if (input.fieldsCollection.size() == 0) {
                     throw new GenerateCSVException('Invalid list of primary fields provided. The string is not comma separated.');
                 }
             }
     
-            if (input.linkedRecordIdsString != null) {
-                input.linkedRecordIds = input.linkedRecordIdsString.split(',');
+            if (input.linkedRecordIdsString != null && input.fieldsString.length() > 0) {
+                input.linkedRecordIds = input.linkedRecordIdsString.replace(' ', '').split(',');
                 if (input.linkedRecordIds.size() == 0) {
                     throw new GenerateCSVException('Invalid list of linked record ids provided. The string is not comma separated.');
                 }
