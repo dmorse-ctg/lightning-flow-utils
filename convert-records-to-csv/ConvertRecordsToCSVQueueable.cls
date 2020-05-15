@@ -298,8 +298,12 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                             } else if (traverse != null) {
                                 // get field value for the last field component
                                 Object fieldValue = traverse.get(comp);
-                                Schema.DisplayType fieldType = traverse.getSObjectType().getDescribe().fields.getMap().get(comp).getDescribe().getType();
-                                rowElement += getDisplayTextForFieldType(fieldValue, fieldType);
+                                if (fieldValue != null) {
+                                    Schema.DisplayType fieldType = traverse.getSObjectType().getDescribe().fields.getMap().get(comp).getDescribe().getType();
+                                    rowElement += getDisplayTextForFieldType(fieldValue, fieldType);
+                                } else {
+                                    rowElement += 'null';
+                                }
                             } else {
                                 rowElement += 'null';
                             }
