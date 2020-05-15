@@ -33,7 +33,7 @@ global without sharing class AddQuotesToFields {
                 if (input.quoteType == 'DOUBLE') {
                     field = '"' + field + '"';
                 } else {
-                    field = '\'' + field + '\'';
+                    field = '\'' + field.replace('\'', '\\\'') + '\'';
                 }
                 transformed.add(field);
             }
