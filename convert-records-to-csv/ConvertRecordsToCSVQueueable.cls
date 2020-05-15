@@ -26,8 +26,11 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     }
 
     global class Inputs {
-        @InvocableVariable(description='List of records to print in report' required=true)
+        @InvocableVariable(description='List of records to print in report')
         global List<SObject> recordCollection;
+
+        @InvocableVariable(description='SOQL Query String that will be executed and printed as a CSV')
+        global String soqlQuery;
     
         @InvocableVariable(description='File name for report' required=true)
         global String documentTitle;
@@ -295,9 +298,6 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                             } else if (traverse != null) {
                                 // get field value for the last field component
                                 Object fieldValue = traverse.get(comp);
-                                if (fieldValue == null) {
-                                    throw new GenerateCSVException('Invalid related list provided. Could not find field ' + comp + ' on ' + traverse);
-                                }
                                 Schema.DisplayType fieldType = traverse.getSObjectType().getDescribe().fields.getMap().get(comp).getDescribe().getType();
                                 rowElement += getDisplayTextForFieldType(fieldValue, fieldType);
                             } else {
