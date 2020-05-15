@@ -1,25 +1,25 @@
-global without sharing AddQuotesToFields {
+global without sharing class AddQuotesToFields {
     global class Input {
         @InvocableVariable(description='Collection of records to transform')
-        List<String> fieldCollection;
+        global List<String> fieldCollection;
 
         @InvocableVariable(description='Comma separated string of records to transform')
-        String fieldString;
+        global String fieldString;
 
         @InvocableVariable(description='Valid inputs are SINGLE for single quotes or DOUBLE for double quotes; Default value is SINGLE.')
-        String quoteType;
+        global String quoteType;
     }
 
     global class Output {
         @InvocableVariable(description='Collection of records transformed with quotes')
-        List<String> fieldCollection;
+        global List<String> fieldCollection;
 
         @InvocableVariable(description='Comma separated string of records transformed with quotes')
-        String fieldString;
+        global String fieldString;
     }
 
     @InvocableMethod(description='Add qoutes to each element in a collection')
-    global static Result addQuotesToCollection(List<Input> input) {
+    global static List<Output> addQuotesToFields(List<Input> inputs) {
         List<Output> outputs = new List<Output>{};
         for (Input input: inputs) {
             if (input.fieldString != null && input.fieldString.length() > 0) {
@@ -28,17 +28,18 @@ global without sharing AddQuotesToFields {
             if (input.quoteType == null) {
                 input.quoteType = 'SINGLE';
             }
+            List<String> transformed = new List<String>{};
             for (String field: input.fieldCollection) {
-                
                 if (input.quoteType == 'DOUBLE') {
-                    field = '"' + String.escapeSingleQuotes(field) + '"';
+                    field = '"' + field + '"';
                 } else {
-                    field = '\'' + String.escapeSingleQuotes(field) + '\'';
+                    field = '\'' + field + '\'';
                 }
+                transformed.add(field);
             }
             Output output = new Output();
-            output.fieldCollection = input.fieldCollection;
-            output.fieldString = String.join(input.fieldCollection, ',');
+            output.fieldCollection = transformed;
+            output.fieldString = String.join(transformed, ',');
             outputs.add(output);
         }
         return outputs;
