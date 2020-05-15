@@ -12,8 +12,8 @@ private class ConvertRecordsToCSVQueueableTests {
         System.assertEquals(3, rows[0].split(',').size());
         System.assertEquals('Name,AccountNumber,BillingCity', rows[0]);
         System.assertEquals('Test1,3445556676', rows[1]);
-        System.assertEquals('Test2,null,Richmond', rows[2]);
-        System.assertEquals('Test3,null,null', rows[3]);
+        System.assertEquals('Test2,,Richmond', rows[2]);
+        System.assertEquals('Test3,,', rows[3]);
     }
 
     @isTest
@@ -44,9 +44,9 @@ private class ConvertRecordsToCSVQueueableTests {
         System.assertEquals(3, rows[0].split(',').size(), 'Full row text: ' + rows[0]);
         System.assertEquals('LastName,Email,Account.Name', rows[0]);
 
-        System.assertEquals('Test1,null,null', rows[1]);
+        System.assertEquals('Test1,,', rows[1]);
         System.assertEquals('Test2,abc@gmail.com,Linked Account', rows[2]);
-        System.assertEquals('Test3,abc@gmail.com,null', rows[3]);
+        System.assertEquals('Test3,abc@gmail.com,', rows[3]);
         
         List<String> rows2 = csv_CaseSensitive.split('\n');
         System.assertEquals('lastName,email,Account.Name', rows2[0]);

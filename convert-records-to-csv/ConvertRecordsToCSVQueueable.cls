@@ -181,7 +181,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                         if (fieldValue != null) {
                             rowElement += String.valueOf(fieldValue).replaceAll('\r\n|\n|\r',' ').replace(',', '');
                         } else {
-                            rowElement += 'null';
+                            rowElement += '';
                         }
                         rowElement += ',';
                     }
@@ -228,7 +228,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
 
                         } else {
                             System.debug('Logs: value null:');
-                            rowElement += 'null';
+                            rowElement += '';
                         }
                         rowElement += ',';
                     }
@@ -299,10 +299,10 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                                     Schema.DisplayType fieldType = traverse.getSObjectType().getDescribe().fields.getMap().get(comp).getDescribe().getType();
                                     rowElement += getDisplayTextForFieldType(fieldValue, fieldType);
                                 } else {
-                                    rowElement += 'null';
+                                    rowElement += '';
                                 }
                             } else {
-                                rowElement += 'null';
+                                rowElement += '';
                             }
                         }
                     } else if (so.get(header) != null) {
@@ -315,7 +315,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                             rowElement += String.valueOf(value).replaceAll('\r\n|\n|\r',' ').escapeCsv();
                         }
                     } else {
-                        rowElement += 'null';
+                        rowElement += '';
                     }
                     rowElement += ',';
                 }
