@@ -26,11 +26,8 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     }
 
     global class Inputs {
-        @InvocableVariable(description='List of records to print in report')
+        @InvocableVariable(description='List of records to print in report' required=true)
         global List<SObject> recordCollection;
-
-        @InvocableVariable(description='SOQL Query String that will be executed and printed as a CSV')
-        global String soqlQuery;
     
         @InvocableVariable(description='File name for report' required=true)
         global String documentTitle;
