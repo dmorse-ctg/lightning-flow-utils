@@ -41,7 +41,9 @@ global with sharing class FilterByRelatedRecords {
                     }
                 }
                 Result result = new Result();
-                result.filteredCollection = filteredList;
+                if (filteredList.size() > 0) {
+                    result.filteredCollection = filteredList;
+                }
                 results.add(result);
             }
         }
