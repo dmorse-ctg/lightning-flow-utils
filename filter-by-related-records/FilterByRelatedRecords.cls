@@ -23,6 +23,7 @@ global with sharing class FilterByRelatedRecords {
         global List<SObject> filteredCollection;
     }
 
+    @InvocableMethod(label='Filter Records by Related Records' description='' category='')
     global static List<Result> filterByRelatedRecords(List<Request> requestList) {
         List<Result> results = new List<Result>{};
         for (Request request: requestList) {
