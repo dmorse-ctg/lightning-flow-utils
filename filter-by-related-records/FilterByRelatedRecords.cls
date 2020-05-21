@@ -20,6 +20,7 @@ global with sharing class FilterByRelatedRecords {
     }
 
     global class Result {
+        @InvocableVariable
         global List<SObject> filteredCollection;
     }
 
