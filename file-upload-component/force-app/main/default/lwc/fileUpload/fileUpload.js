@@ -1,4 +1,5 @@
 import { LightningElement, api, track } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import uploadFile from '@salesforce/apex/FilesController.uploadFile';
 
 export default class FileUpload extends LightningElement {
