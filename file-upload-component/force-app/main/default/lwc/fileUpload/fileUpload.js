@@ -4,7 +4,6 @@ import uploadFile from '@salesforce/apex/FilesController.uploadFile';
 
 export default class FileUpload extends LightningElement {
     @api displayText;
-    @api relatedRecordIds;
     @api linkedRecordString;
     @api linkedRecordCollection;
     @api fileShareType;

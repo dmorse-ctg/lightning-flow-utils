@@ -8,6 +8,10 @@
     <targetConfigs>
         <targetConfig targets="lightning__FlowScreen">
             <property name="displayText" type="String" label="Text above upload button" role="inputOnly"/>
+            <property name="linkedRecordString" type="String" label="Records to link document to" role="inputOnly"/>
+            <property name="linkedRecordCollection" type="String[]" label="Records to link document to" role="inputOnly"/>
+            <property name="fileShareType" type="String" label="Share Type" role="inputOnly"/>
+            <property name="fileVisibility" type="String" label="File Visibility" role="inputOnly"/>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>
