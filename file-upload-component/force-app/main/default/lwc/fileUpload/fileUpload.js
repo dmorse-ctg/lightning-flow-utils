@@ -67,7 +67,7 @@ export default class FileUpload extends LightningElement {
 
     // Calling apex class to insert the file
     uploadFile(name, contents, showToast) {
-        uploadFile({ fileName: name, fileExtension: '.csv', fileContents: contents, documentShareType: this.fileShareType, documentVisibility: this.fileVisibility, linkedREcordIds: this.linkedRecordCollection})
+        uploadFile({ fileName: name, fileContents: contents, documentShareType: this.fileShareType, documentVisibility: this.fileVisibility, linkedREcordIds: this.linkedRecordCollection})
         .then(result => {
             window.console.log('result ====> ' +result);
 

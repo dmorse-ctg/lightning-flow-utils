@@ -6,11 +6,11 @@ public with sharing class FilesController {
         @AuraEnabled public List<ContentDocumentLink> ContentDocumentLinks;
     }
 
-    @AuraEnabled public static FileUploadInfo uploadFile(String fileName, String fileExtension, String versionData, String documentShareType, String documentVisibility, List<String> linkedRecordIds) {
+    @AuraEnabled public static FileUploadInfo uploadFile(String fileName, String versionData, String documentShareType, String documentVisibility, List<String> linkedRecordIds) {
         ContentVersion cv = new ContentVersion();
         cv.VersionData = Blob.valueOf(versionData);
         cv.Title = fileName;
-        cv.PathOnClient = fileName + fileExtension;
+        cv.PathOnClient = fileName;
         cv.IsMajorVersion = true;
         insert cv;
 
