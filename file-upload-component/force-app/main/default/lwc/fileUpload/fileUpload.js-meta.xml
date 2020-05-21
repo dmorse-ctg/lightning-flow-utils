@@ -3,25 +3,11 @@
     <apiVersion>48.0</apiVersion>
     <isExposed>true</isExposed>
     <targets>
-        <target>lightning__Tab</target>
         <target>lightning__FlowScreen</target>
     </targets>
     <targetConfigs>
         <targetConfig targets="lightning__FlowScreen">
-            <property name="selectedRecordIds" label="Selected Record Ids" type="String[]"/>
-            <property name="recordType" type="String" label="Searched Object API Name" role="inputOnly"/>
-            <property name="fieldsToReturn" type="String[]" label="List of Object Fields to Return" description="Optional list of fields to return. If blank, the query will return all fields on the object" role="inputOnly"/>
-            <property name="fieldsToReturnCSV" type="String" label="CSV of Object Fields to Return" description="Optional list of fields to return. If blank, the query will return all fields on the object" role="inputOnly"/>
-            <property name="maxSearchResults" label="Max Results" type="Integer" role="inputOnly"/>
-            <property name="searchResultTitle" label="Search Result Title Label" type="String" role="inputOnly"/>
-            <property name="searchResultSubtitles" label="Search Result Sub-Title Label(s)" type="String[]" role="inputOnly"/>
-            <property name="searchResultSubtitlesCSV" label="Search Result Sub-Title Label(s) CSV" type="String" role="inputOnly"/>
-            <property name="titleLabel" type="String" label="Form Element Title" role="inputOnly"/>
-            <property name="selectionRequired" label="Selection Required" type="Boolean" role="inputOnly"/>
-            <property name="multiSelectAllowed" label="Allow Multiple Selections" type="Boolean" role="inputOnly"/>
-
-            <!-- <propertyType name="T" extends="SObject" label="Object API Name" description="Select the api name of the SObject this component is going to be looking for" />
-            <property name="selectedRecords" type="{T[]}" label="Selected Records" role="outputOnly" description="Records found in search" />  -->
+            <property name="displayText" type="String" label="Text above upload button" role="inputOnly"/>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>
