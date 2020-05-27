@@ -3,12 +3,19 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import uploadFile from '@salesforce/apex/FilesController.uploadFile';
 
 export default class FileUpload extends LightningElement {
+    // Inputs
     @api displayText;
     @api linkedRecordString;
     @api linkedRecordCollection;
     @api fileShareType;
     @api fileVisibility;
     @api acceptMultiple = false;
+
+    // Outputs 
+    @api contentDocumentId;
+    @api contentVersionId;
+    @api contentDocumentLinkIds;
+    @api contentDocumentLinks;
 
     MAX_FILE_SIZE = 1500000;
 
@@ -72,6 +79,13 @@ export default class FileUpload extends LightningElement {
         uploadFile({ fileName: name, versionData: contents, documentShareType: this.fileShareType, documentVisibility: this.fileVisibility, linkedRecordIds: this.linkedRecordCollection})
         .then(result => {
             window.console.log('result ====> ' +result);
+
+            this.contentDocumentId = result.ContentDocumentId;
+            this.contentVersionId = result.ContentVersionId;
+            this.contentDocumentLinkIds = result.ContentDocumentLinks.map(link => {
+                return link.Id;
+            });
+            this.contentDocumentLinks = result.ContentDocumentLinks;
 
             // Showing Success message after file insert
             if (showToast) {
