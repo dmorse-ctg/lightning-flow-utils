@@ -14,7 +14,7 @@
             <property name="fileVisibility" type="String" label="File Visibility" role="inputOnly"/>
             <property name="acceptMultiple" type="Boolean" label="Accept Multiple Uploads" role="inputOnly"/>
 
-            <property name="contentDocumentId" type="String[]" label="Content Document Id" role="outputOnly"/>
+            <property name="contentDocumentId" type="String" label="Content Document Id" role="outputOnly"/>
             <property name="contentVersionId" type="String" label="Content Version Id" role="outputOnly"/>
             <property name="contentDocumentLinkIds" type="String[]" label="Content Docment Link Ids" role="outputOnly"/>
             <property name="contentDocumentLinks" type="@salesforce/schema/ContentDocumentLink[]" label="Content Document Links" role="outputOnly"/>
