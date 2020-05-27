@@ -116,6 +116,12 @@ export default class FileUpload extends LightningElement {
     }
 
     resetState() {
+        const inputFields = this.template.querySelectorAll('lightning-input');
+        if (inputFields) {
+            inputFields.forEach(field => {
+                field.files = [];
+            });
+        }
         this.showSpinner = false;
         this.filesUploaded = [];
         this.disableUpload = true;
