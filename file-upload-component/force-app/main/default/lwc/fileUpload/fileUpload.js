@@ -8,6 +8,7 @@ export default class FileUpload extends LightningElement {
     @api linkedRecordCollection;
     @api fileShareType;
     @api fileVisibility;
+    @api acceptMultiple = false;
 
     MAX_FILE_SIZE = 1500000;
 
@@ -39,40 +40,43 @@ export default class FileUpload extends LightningElement {
 
     uploadHelper() {
         this.showSpinner = true;
-        console.log('files: ' + JSON.stringify(this.filesUploaded));
-        this.filesUploaded.forEach((file, index) => {
-            console.log('File: ' + JSON.stringify(file));
-            if (file.size > this.MAX_FILE_SIZE) {
-                console.log('File Size is to long');
-                return ;
-            }
-            console.log('Uploaded file: ' + file.name);
-            // create a FileReader object 
-            var fileReader = new FileReader();
-            // set onload function of FileReader object  
-           fileReader.onloadend = (() => {
-                var fileContents = fileReader.result;
-                let base64 = 'base64,';
-                var content = fileContents.indexOf(base64) + base64.length;
-                fileContents = fileContents.substring(content);
-                
-                // call the uploadProcess method 
-                var showToast = index == this.filesUploaded.length - 1
-                this.uploadFile(file.name, contents, showToast);
-            });
-            fileReader.readAsDataURL(file);
+
+        var file = this.filesUploaded[0];
+        if (file.size > this.MAX_FILE_SIZE) {
+            console.log('File Size is to long');
+            return ;
+        }
+        console.log('Uploaded file: ' + file.name);
+        // create a FileReader object 
+        var fileReader = new FileReader();
+        // set onload function of FileReader object  
+       fileReader.onloadend = (() => {
+            var fileContents = fileReader.result;
+            let base64 = 'base64,';
+            var content = fileContents.indexOf(base64) + base64.length;
+            fileContents = fileContents.substring(content);
+            
+            // call the uploadProcess method 
+            // var showToast = i == this.filesUploaded.length - 1
+
+            this.uploadFile(file.name, fileContents, true);
         });
+        fileReader.readAsDataURL(file);
+        // this.filesUploaded.forEach((file, index) => {
+
+        // });
     }
 
     // Calling apex class to insert the file
     uploadFile(name, contents, showToast) {
-        uploadFile({ fileName: name, fileContents: contents, documentShareType: this.fileShareType, documentVisibility: this.fileVisibility, linkedREcordIds: this.linkedRecordCollection})
+        uploadFile({ fileName: name, versionData: contents, documentShareType: this.fileShareType, documentVisibility: this.fileVisibility, linkedRecordIds: this.linkedRecordCollection})
         .then(result => {
             window.console.log('result ====> ' +result);
 
             // Showing Success message after file insert
             if (showToast) {
-                this.resetState();
+                // var fileNames = this.filesUploaded.reduce((fullText, file) => fullText += file.name + ', ');
+                // fileNames = fileNames.substring(0, str.length - 1);
                 this.dispatchEvent(
                     new ShowToastEvent({
                         title: 'Success!',
@@ -80,15 +84,16 @@ export default class FileUpload extends LightningElement {
                         variant: 'success',
                     }),
                 );
+                this.resetState();
             }
         })
         .catch(error => {
             // Showing errors if any while inserting the files
-            console.log(error);
+            console.log('Error: ' + error);
             this.resetState();
             this.dispatchEvent(
                 new ShowToastEvent({
-                    title: 'Error Uploading File',
+                    title: 'Error uploading file. Please try again.',
                     message: error.message,
                     variant: 'error',
                 }),
@@ -98,7 +103,7 @@ export default class FileUpload extends LightningElement {
 
     resetState() {
         this.showSpinner = false;
-        this.uploadedFiles = [];
+        this.filesUploaded = [];
         this.disableUpload = true;
     }
 }

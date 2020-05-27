@@ -2,14 +2,14 @@
     <template if:true={showSpinner}>
         <lightning-spinner alternative-text="Uploading......" size="medium"></lightning-spinner>
     </template>
-    <span class="slds-form-element__label" id="file-selector-primary-label">{displayText}</span>
     <div>
-        <lightning-input label="" name="file uploader" onchange={handleFilesChange} type="file" multiple></lightning-input>
+        <lightning-input label={displayText} name="file uploader" onchange={handleFilesChange} type="file" multiple={acceptMultiple}></lightning-input>
     </div>
-    <template for:each={uploadedFiles} for:item="file">
-        <div class="slds-text-body_small slds-text-color_error" key={file.name}>{file.name}</div>
+    <template for:each={filesUploaded} for:item="file">
+        <div class="slds-text-body_small slds-m-top_small" key={file.name}>{file.name}
+        </div>
     </template>
-    <div class="slds-m-top_medium">
+    <div class="slds-m-top_small">
         <lightning-button label="Upload" onclick={handleSave} variant="brand" disabled={disableUpload}></lightning-button>
         <lightning-button class="slds-m-left_x-small" label="Cancel" onclick={resetState} variant="base"></lightning-button>
     </div>
