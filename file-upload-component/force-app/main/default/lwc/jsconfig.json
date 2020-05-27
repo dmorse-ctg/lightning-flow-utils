@@ -5,6 +5,9 @@
         "paths": {
             "c/fileUpload": [
                 "fileUpload/fileUpload.js"
+            ],
+            "c/fileDownload": [
+                "fileDownload/fileDownload.js"
             ]
         }
     },
