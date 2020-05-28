@@ -9,7 +9,6 @@ export default class FileUpload extends LightningElement {
     @api linkedRecordCollection;
     @api fileShareType;
     @api fileVisibility;
-    @api acceptMultiple = false;
 
     // Outputs 
     @api contentDocumentId;
@@ -24,15 +23,20 @@ export default class FileUpload extends LightningElement {
     @track showError = false;
     @track errorText = "";
     @track disableUpload;
+    @track disableFilePicker = false;
 
     connectedCallback() {
         this.disableUpload = true;
+        if (this.linkedRecordString != null) {
+            this.linkedRecordCollection = this.linkedRecordString.split(',');
+        }
     }
 
     handleFilesChange(event) {
         if (event.target.files.length > 0) {
             this.filesUploaded = event.target.files;
             this.disableUpload = false;
+            this.disableFilePicker = !this.disableUpload;
         }
     }
 
@@ -69,9 +73,6 @@ export default class FileUpload extends LightningElement {
             this.uploadFile(file.name, fileContents, true);
         });
         fileReader.readAsDataURL(file);
-        // this.filesUploaded.forEach((file, index) => {
-
-        // });
     }
 
     // Calling apex class to insert the file
@@ -125,5 +126,6 @@ export default class FileUpload extends LightningElement {
         this.showSpinner = false;
         this.filesUploaded = [];
         this.disableUpload = true;
+        this.disableFilePicker = !this.disableUpload;
     }
 }

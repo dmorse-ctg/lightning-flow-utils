@@ -3,15 +3,15 @@
         <lightning-spinner alternative-text="Uploading......" size="medium"></lightning-spinner>
     </template>
     <div>
-        <lightning-input label={displayText} name="file uploader" onchange={handleFilesChange} type="file" multiple={acceptMultiple}></lightning-input>
+        <lightning-input label={displayText} name="file uploader" onchange={handleFilesChange} type="file" disabled={disableFilePicker}></lightning-input>
     </div>
     <template for:each={filesUploaded} for:item="file">
         <div class="slds-text-body_small slds-m-top_small" key={file.name}>{file.name}
         </div>
     </template>
     <div class="slds-m-top_small">
-        <lightning-button label="Upload" onclick={handleSave} variant="brand" disabled={disableUpload}></lightning-button>
-        <lightning-button class="slds-m-left_x-small" label="Cancel" onclick={resetState} variant="base"></lightning-button>
+        <lightning-button label="Save" onclick={handleSave} variant="brand" disabled={disableUpload}></lightning-button>
+        <lightning-button class="slds-m-left_x-small" label="Cancel" onclick={resetState} variant="base" disabled={disableUpload}></lightning-button>
     </div>
     <div class="slds-form-element__help slds-has-error" id="error-01" if:true={showError}>{errorMessage}</div>
 </template>
