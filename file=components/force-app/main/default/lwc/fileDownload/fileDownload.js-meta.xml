@@ -8,7 +8,7 @@
     <targetConfigs>
         <targetConfig targets="lightning__FlowScreen">
             <property name="displayText" type="String" label="Text above download button" role="inputOnly"/>
-            <property name="contentDocumentId" type="String" label="Content Version Id of document to download" role="inputOnly"/>
+            <property name="contentDocumentId" type="String" label="ContentDocument Id to download" role="inputOnly"/>
             <property name="directLink" type="String" label="Non-public link to file" role="outputOnly"/>
         </targetConfig>
      </targetConfigs>
