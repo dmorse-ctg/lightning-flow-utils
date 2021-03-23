@@ -38,10 +38,10 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         @InvocableVariable(description='Specifies whether the document is available to all users, internal users, or shared users. Valid values: "AllUsers", "InternalUsers", "SharedUsers"; Default value: "AllUsers"')
         global String documentVisibility;
     
-        @InvocableVariable(description='Optional list of record Ids to link generated file to')
+        @InvocableVariable(description='Optional: List of record Ids to link generated file to')
         global List<String> linkedRecordIds;
 
-        @InvocableVariable(description='Optional comma-separated string of record Ids to link generated file to')
+        @InvocableVariable(description='Optional: Comma-separated string of record Ids to link generated file to')
         global String linkedRecordIdsString;
 
         @InvocableVariable(description='Optional: Collection of fields (column names) to report. If null, all populated fields on the records will be displayed. NOTE: If you need to print related fields this parameter is required.')
@@ -49,6 +49,9 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
 
         @InvocableVariable(description='Optional: Comma-separated string of fields (column names) to report. If null, all populated fields on the records will be displayed. NOTE: If you need to print related fields this parameter is required.')
         global String fieldsString;
+
+        @InvocableVariable(description='If set to true, column headers will be field label names. If false or null, column headers will be field API names')
+        global Boolean boolFieldLabels;
 
         @InvocableVariable(description='If set, the action will execute asynchrounously and file information will be posted to a platform event: CSV_Document__e. Use this identifier to listen for the platform event in a \'Wait\' element in Flow, or use Summer 20\'s \'Invoke Flow from a Platform Event\'')
         global String executeAsyncIdentifier;
@@ -74,7 +77,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     }
 
     global void execute(QueueableContext context) {
-        Outputs returnVal = generateDocument(this.input.linkedRecordIds, this.input.documentTitle, this.input.documentShareType, this.input.documentVisibility, generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, true));
+        Outputs returnVal = generateDocument(this.input.linkedRecordIds, this.input.documentTitle, this.input.documentShareType, this.input.documentVisibility, generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, true, input.boolFieldLabels));
 
         // Generate platform event
 	    // Use this to get document information for jobs that were executed asyncronously from your flow.
@@ -129,6 +132,10 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                     throw new GenerateCSVException('Invalid list of linked record ids provided. The string is not comma separated.');
                 }
             }
+
+            if(input.boolFieldLabels == null){
+                input.boolFieldLabels = false;
+            }
     
             Boolean executeAsync = input.executeAsyncIdentifier != null;
             if (!executeAsync && input.fieldsCollection != null && input.fieldsCollection.size()*input.recordCollection.size() > SYNC_ITERATION_LIMIT) {
@@ -136,7 +143,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
             }
     
             if (!executeAsync) {
-                String fullCSV = generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, executeAsync);
+                String fullCSV = generateCSVContent(input.recordCollection, input.fieldsCollection, CSVParseType.ALL, executeAsync, input.boolFieldLabels);
                 ConvertRecordsToCSVQueueable.Outputs returnVal = generateDocument(input.linkedRecordIds, input.documentTitle, input.documentShareType, input.documentVisibility, fullCSV);
                 return new List<ConvertRecordsToCSVQueueable.Outputs>{returnVal};
             }
@@ -149,13 +156,13 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
         return outputs;
     }
 
-    global static String generateCSVContent(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync) {
+    global static String generateCSVContent(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync, Boolean boolFieldLabels) {
         if (objectList[0].getSObjectType().getDescribe().getName() == 'AggregateResult') { 
             // Handle AggregateResult type
             return generateAggregateResultCSV(objectList, fieldList, parseType, executingAsync);
         }
         // Handle regular sObject
-        return generateRecordsToCSV(objectList, fieldList, parseType, executingAsync);
+        return generateRecordsToCSV(objectList, fieldList, parseType, executingAsync, boolFieldLabels);
     }
 
     @TestVisible
@@ -242,7 +249,7 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
     }
 
     @TestVisible
-    private static String generateRecordsToCSV(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync) {
+    private static String generateRecordsToCSV(List<SObject> objectList, List<String> fieldList, CSVParseType parseType, Boolean executingAsync, Boolean boolFieldLabels) {
         Set<String> columnHeaders = new Set<String>{};
         List<String> rowElements = new List<String>{};
 
@@ -323,7 +330,18 @@ global without sharing class ConvertRecordsToCSVQueueable implements Queueable {
                 rowElements.add(rowElement);
             }
             rowElementsCSV = String.join(rowElements, '\n') + '\n';
+
+            // if column headers should be field labels instead of field API names, get field labels
+            if(boolFieldLabels){
+                Set<String> setFieldListLabels = new Set<String>();
+                for(String strColHeader : columnHeaders){
+                    String strFieldLabel = allFields.get(strColHeader).getDescribe().getLabel();
+                    setFieldListLabels.add(strFieldLabel);
+                }
+                columnHeadersCSV = String.join(new List<String>(setFieldListLabels), ',') + '\n';
+            }
         }
+
         return columnHeadersCSV + rowElementsCSV;
     }
 

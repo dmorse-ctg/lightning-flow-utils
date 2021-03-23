@@ -4,7 +4,7 @@ private class ConvertRecordsToCSVQueueableTests {
     private static void testGenerateCSVContent() {
         List <SObject> objects = new List<SObject>{new Account(Name='Test1', AccountNumber='3445556676'), new Account(Name='Test2', BillingCity='Richmond'), new Account(Name='Test3')};
         Test.startTest();
-        String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(objects, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
+        String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(objects, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false, false);
         Test.stopTest();
         List<String> rows = fullCSV.split('\n');
         System.assertEquals(4, rows.size());
@@ -34,9 +34,10 @@ private class ConvertRecordsToCSVQueueableTests {
         List<Contact> contacts = [Select FirstName, LastName, Email, Account.Name from Contact];
 
         Test.startTest();
-        String allFields = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
-        String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'LastName','Email','Account.Name'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
-        String csv_CaseSensitive = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'lastName','email','Account.Name'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
+        String allFields = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false, false);
+        String allFieldsHeaderLabels = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false, true);
+        String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'LastName','Email','Account.Name'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false, false);
+        String csv_CaseSensitive = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'lastName','email','Account.Name'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false, false);
         Test.stopTest();
         List<String> rows = fullCSV.split('\n');
         System.assertEquals(4, rows.size());
@@ -53,7 +54,10 @@ private class ConvertRecordsToCSVQueueableTests {
         System.assertEquals('Test2,abc@gmail.com,Linked Account', rows2[2]);
         
         List<String> rows3 = allFields.split('\n');
-        System.assertEquals('LastName,Id,Email,AccountId,FirstName', rows3[0]);
+        System.assertEquals('LastName,AccountId,Id,Email,FirstName', rows3[0]);
+
+        List<String> rows4 = allFieldsHeaderLabels.split('\n');
+        System.assertEquals('Last Name,Account ID,Contact ID,Email,First Name', rows4[0]);
     }
 
     @isTest
@@ -67,8 +71,8 @@ private class ConvertRecordsToCSVQueueableTests {
         List<AggregateResult> contacts = [Select LastName name from Contact GROUP BY LastName];
         
         Test.startTest();
-        String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'name'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
-        String unnamed = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
+        String fullCSV = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, new List<String>{'name'}, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false, false);
+        String unnamed = ConvertRecordsToCSVQueueable.generateCSVContent(contacts, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false, false);
         Test.stopTest();
         
         List<String> rows = fullCSV.split('\n');
@@ -91,7 +95,7 @@ private class ConvertRecordsToCSVQueueableTests {
 
         List<AggregateResult> count = [SELECT count(Id) NumberOfAccounts, Type FROM Account WHERE Type != null Group by Type];
         
-        String aggrResult = ConvertRecordsToCSVQueueable.generateCSVContent(count, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false);
+        String aggrResult = ConvertRecordsToCSVQueueable.generateCSVContent(count, null, ConvertRecordsToCSVQueueable.CSVParseType.ALL, false, false);
 
         List<String> rows = aggrResult.split('\n');
         System.assertEquals(3, rows.size(), 'Full text: ' + aggrResult);
